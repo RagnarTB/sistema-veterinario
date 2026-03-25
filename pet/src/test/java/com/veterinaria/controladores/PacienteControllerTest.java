@@ -33,7 +33,8 @@ class PacienteControllerTest {
                 {
                     "nombre": "Firulais",
                     "especie": "Perro",
-                    "raza": "Mestizo"
+                    "raza": "Mestizo",
+                    "clienteId": 1
                 }
                 """;
 
@@ -41,7 +42,7 @@ class PacienteControllerTest {
         mockMvc.perform(post("/api/pacientes")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(pacienteJson))
-                .andExpect(status().isCreated()); // ¿Qué código HTTP significa "Created"?
+                .andExpect(status().isCreated());
     }
 
     @Test
@@ -81,7 +82,8 @@ class PacienteControllerTest {
                 {
                     "nombre": "Firulais Corregido",
                     "especie": "Perro",
-                    "raza": "Mestizo"
+                    "raza": "Mestizo",
+                    "clienteId": 1
                 }
                 """;
 
