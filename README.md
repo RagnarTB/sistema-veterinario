@@ -237,7 +237,20 @@ Por seguridad, nunca se envían objetos completos relacionados desde el frontend
 
 ---
 
-# 6. Entorno Local y Seguridad (Fase de Desarrollo)
+## Relación Compleja (POS) - Venta, DetalleVenta y Producto
+
+Para el Punto de Venta y el control de inventario, modelamos una estructura de ticket real:
+- **Cabecera (Venta):** Contiene la fecha, el total y el cliente (`@ManyToOne`). Una `Venta` tiene muchos detalles (`@OneToMany` con `cascade = CascadeType.ALL`).
+- **Filas (DetalleVenta):** Representa cada línea del ticket. Pertenece a una `Venta` (`@ManyToOne`) y está asociado a un `Producto` (`@ManyToOne`). Guarda una "foto" del precio y cantidad exactos en el momento de la transacción.
+
+# 6. Lógica Transaccional y Reglas de Negocio (Módulo POS)
+
+Para el Módulo 4 (Ventas e Inventario), implementamos reglas de negocio estrictas para evitar fugas de inventario y vulnerabilidades de seguridad:
+
+- **Confianza Cero en el Frontend (Zero Trust):** Por seguridad, el `VentaRequestDTO` *solo* recibe el `clienteId`, `productoId` y `cantidad`. El Backend es el único responsable de ir a la base de datos, consultar el precio real, calcular los subtotales, generar el total y estampar la fecha del servidor. Así evitamos que usuarios maliciosos manipulen precios desde el navegador.
+- **Integridad con `@Transactional`:** El método de cobro en `VentaServicio` está blindado con la anotación `@Transactional`. Esto asegura que si un cliente pide 3 productos y el último no tiene stock, se lance un `400 Bad Request` y la base de datos revierta toda la operación (Rollback), evitando boletas a medias y stocks descuadrados.
+
+# 7. Entorno Local y Seguridad (Fase de Desarrollo)
 
 Para facilitar el desarrollo y pruebas de la API con herramientas como Postman o Thunder Client, se ha adaptado la configuración de seguridad.
 
@@ -259,14 +272,14 @@ Para facilitar el desarrollo y pruebas de la API con herramientas como Postman o
 
 ---
 
-# 7. Mapa de Ruta del Proyecto
+# 8. Mapa de Ruta del Proyecto
 
 Estado actual del desarrollo:
 
 - [x] Módulo 1: Setup y Arquitectura Base  
 - [x] Módulo 2: Gestión de Pacientes y Clientes (CRUD y relaciones)  
 - [x] Módulo 3: Citas y Atención Médica   
-- [ ] Módulo 4: Punto de Venta (POS) e Inventario (pendiente)  
+- [x] Módulo 4: Punto de Venta (POS) e Inventario (pendiente)  
 - [ ] Módulo 5: Seguridad y Autenticación JWT (pendiente)  
 - [ ] Módulo 6: Frontend (Angular) (pendiente)  
 - [ ] Módulo 7: Producción (pendiente)  
