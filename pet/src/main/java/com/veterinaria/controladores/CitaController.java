@@ -2,6 +2,7 @@ package com.veterinaria.controladores;
 
 import java.util.List;
 
+import org.apache.catalina.connector.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ import jakarta.websocket.server.PathParam;
 
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -44,7 +46,7 @@ public class CitaController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CitaResponseDTO> obtenerCitaPorId(@RequestParam Long id) {
+    public ResponseEntity<CitaResponseDTO> obtenerCitaPorId(@PathVariable Long id) {
         CitaResponseDTO respuesta = citaServicio.buscarPorId(id);
         return ResponseEntity.ok(respuesta);
     }
@@ -55,6 +57,13 @@ public class CitaController {
         CitaResponseDTO citaActualizada = citaServicio.actualizar(id, dto);
 
         return ResponseEntity.ok(citaActualizada);
+    }
+
+    @DeleteMapping("{id}")
+    public ResponseEntity<Void> eliminarCita(@PathVariable Long id) {
+        citaServicio.eliminar(id);
+
+        return ResponseEntity.noContent().build();
     }
 
 }

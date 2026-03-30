@@ -3,7 +3,9 @@ package com.veterinaria.modelos;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -31,5 +33,8 @@ public class Cita {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "paciente_id") // La columna en BD se llamará paciente_id
     private Paciente paciente;// En Java, manejamos el objeto completo, no solo el ID
+
+    @OneToOne(mappedBy = "cita", cascade = CascadeType.ALL)
+    private AtencionMedica atencionMedica;
 
 }
