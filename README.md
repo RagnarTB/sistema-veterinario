@@ -268,14 +268,6 @@ Aplicamos el principio de seguridad donde el Backend nunca confía en los IDs en
 - En la creación de una `AtencionMedica`, el `veterinario_id` **no se recibe en el JSON**.
 - En su lugar, interceptamos la identidad del médico en pleno vuelo extrayendo su email directamente del Token JWT activo (`SecurityContextHolder.getContext().getAuthentication().getName()`). Esto evita la suplantación de identidad entre empleados.
 
-## Próximos pasos
-
-- Se eliminará esta exclusión  
-- Se implementará:  
-  - Autenticación basada en JWT (JSON Web Tokens)  
-  - Control de acceso basado en roles (RBAC)  
-
----
 
 # 8. Mapa de Ruta del Proyecto
 
@@ -284,7 +276,7 @@ Estado actual del desarrollo:
 - [x] Módulo 1: Setup y Arquitectura Base  
 - [x] Módulo 2: Gestión de Pacientes y Clientes (CRUD y relaciones)  
 - [x] Módulo 3: Citas y Atención Médica   
-- [x] Módulo 4: Punto de Venta (POS) e Inventario (pendiente)  
-- [ ] Módulo 5: Seguridad y Autenticación JWT (pendiente)  
+- [x] Módulo 4: Punto de Venta (POS) e Inventario   
+- [x] Módulo 5: Seguridad y Autenticación JWT 
 - [ ] Módulo 6: Frontend (Angular) (pendiente)  
 - [ ] Módulo 7: Producción (pendiente)  
