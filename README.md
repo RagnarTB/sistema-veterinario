@@ -250,18 +250,23 @@ Para el Módulo 4 (Ventas e Inventario), implementamos reglas de negocio estrict
 - **Confianza Cero en el Frontend (Zero Trust):** Por seguridad, el `VentaRequestDTO` *solo* recibe el `clienteId`, `productoId` y `cantidad`. El Backend es el único responsable de ir a la base de datos, consultar el precio real, calcular los subtotales, generar el total y estampar la fecha del servidor. Así evitamos que usuarios maliciosos manipulen precios desde el navegador.
 - **Integridad con `@Transactional`:** El método de cobro en `VentaServicio` está blindado con la anotación `@Transactional`. Esto asegura que si un cliente pide 3 productos y el último no tiene stock, se lance un `400 Bad Request` y la base de datos revierta toda la operación (Rollback), evitando boletas a medias y stocks descuadrados.
 
-# 7. Entorno Local y Seguridad (Fase de Desarrollo)
+# 7. Seguridad Estricta y Autenticación (JWT)
 
-Para facilitar el desarrollo y pruebas de la API con herramientas como Postman o Thunder Client, se ha adaptado la configuración de seguridad.
+A partir del Módulo 5, hemos eliminado la desactivación de Spring Security y hemos blindado la API bajo una arquitectura de "Cero Confianza" (Zero Trust) utilizando JSON Web Tokens (JWT).
 
-## Configuración actual
+## 7.1. Cifrado y Data Seeding
+- **Contraseñas seguras:** Implementamos `BCryptPasswordEncoder` para encriptar las contraseñas antes de guardarlas en la base de datos (PostgreSQL/H2).
+- **Sembrador de Datos (Data Seeder):** Usamos `CommandLineRunner` en la clase principal para inicializar automáticamente los roles del sistema (`ROLE_ADMIN`, `ROLE_CLIENTE`, `ROLE_VETERINARIO`, `ROLE_RECEPCIONISTA`) al arrancar la aplicación.
 
-- Desactivación temporal de Spring Security:
+## 7.2. Filtro de Seguridad Stateless (Sin Estado)
+- La aplicación está configurada como `STATELESS`. El servidor no guarda sesiones en memoria, lo que permite que la API sea altamente escalable.
+- **JwtAuthenticationFilter:** Creamos un filtro personalizado que intercepta cada petición HTTP, extrae el token del header `Authorization: Bearer <token>`, valida la firma criptográfica y establece el contexto de seguridad.
+- **Rutas Protegidas:** Solo los endpoints `/api/auth/registro` y `/api/auth/login` son públicos. Cualquier otra ruta exige un Token válido.
 
-        @SpringBootApplication(exclude = { SecurityAutoConfiguration.class })
-
-- Se aplica en la clase principal (PetApplication)  
-- Evita errores `401 Unauthorized` durante el desarrollo inicial  
+## 7.3. Auditoría de Identidad (Security Context)
+Aplicamos el principio de seguridad donde el Backend nunca confía en los IDs enviados por el Frontend para transacciones sensibles. 
+- En la creación de una `AtencionMedica`, el `veterinario_id` **no se recibe en el JSON**.
+- En su lugar, interceptamos la identidad del médico en pleno vuelo extrayendo su email directamente del Token JWT activo (`SecurityContextHolder.getContext().getAuthentication().getName()`). Esto evita la suplantación de identidad entre empleados.
 
 ## Próximos pasos
 
