@@ -3,6 +3,8 @@ package com.veterinaria.servicios;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 // IMPORTANTE: Importamos el Contexto de Seguridad
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,6 +41,15 @@ public class AtencionMedicaServicio {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "No se puede crear la atencion medica, cita no encontrada: " + dto.getCitaId()));
 
+        if (cita.getEstado() == EstadoCita.COMPLETADA) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Esta cita ya tiene una historia clínica registrada.");
+        }
+        if (cita.getEstado() == EstadoCita.CANCELADA || cita.getEstado() == EstadoCita.NO_ASISTIO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "No se puede atender a un paciente cuya cita fue cancelada o no asistió.");
+        }
+
         // Obtenemos el email del doctor directamente del Token JWT que
         // usó para entrar
         String emailDoctorAutenticado = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -46,6 +57,11 @@ public class AtencionMedicaServicio {
         // Buscamos a ese doctor en la base de datos
         Usuario doctor = usuarioRepositorio.findByEmail(emailDoctorAutenticado)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no válido"));
+
+        if (!cita.getVeterinario().getId().equals(doctor.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "No puedes registrar la atención médica de un paciente asignado a otro veterinario.");
+        }
 
         AtencionMedica atencionMedica = new AtencionMedica();
 
@@ -68,11 +84,9 @@ public class AtencionMedicaServicio {
     }
 
     // READ (Listar Todos)
-    public List<AtencionMedicaResponseDTO> listarTodos() {
-        List<AtencionMedica> atenciones = atencionMedicaRepositorio.findAll();
-        return atenciones.stream()
-                .map(this::mapearADTO)
-                .collect(Collectors.toList());
+    public Page<AtencionMedicaResponseDTO> listarTodos(Pageable pageable) {
+        return atencionMedicaRepositorio.findAll(pageable)
+                .map(this::mapearADTO);
     }
 
     // READ (Buscar por ID)

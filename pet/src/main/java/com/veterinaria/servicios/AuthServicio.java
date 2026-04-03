@@ -47,9 +47,12 @@ public class AuthServicio {
     @Transactional // AQUI: Fundamental porque guardamos en 2 tablas
     public MensajeResponseDTO registrarCliente(RegistroClienteDTO dto) {
 
-        // 1. Validar si el email ya existe
+        // 1. Validar si el email y dni ya existe
         if (usuarioRepositorio.findByEmail(dto.getEmail()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email ya está registrado");
+        }
+        if (clienteRepositorio.existsByDni(dto.getDni())) {
+            throw new RuntimeException("El DNI ya se encuentra registrado");
         }
 
         // 2. Buscar el Rol (Exigencia de Spring Security: empezar con ROLE_)

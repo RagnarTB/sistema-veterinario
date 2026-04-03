@@ -34,6 +34,10 @@ public class ClienteServicio {
         cliente.setDni(dto.getDni());
         cliente.setEmail(dto.getEmail());
 
+        // Como este cliente lo está creando la recepcionista directamente, no tiene
+        // usuario web
+        cliente.setEsInvitado(true);
+
         Cliente clienteGuardado = clienteRepositorio.save(cliente);
 
         ClienteResponseDTO respuesta = new ClienteResponseDTO();

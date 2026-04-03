@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.veterinaria.dtos.CajaRequestDTO;
+import com.veterinaria.dtos.CierreCajaResponseDTO;
 import com.veterinaria.servicios.CajaServicio;
 
 import jakarta.validation.Valid;
@@ -28,9 +29,8 @@ public class CajaController {
     // ¡NUEVO ENDPOINT!
     @PutMapping("/cerrar")
     @PreAuthorize("hasRole('ADMIN')") // Por seguridad, solo el dueño/admin cierra la caja
-    public ResponseEntity<Void> cerrarCaja() {
-        cajaServicio.cerrarCaja();
-        // Devolvemos 200 OK
-        return ResponseEntity.ok().build();
+    public ResponseEntity<CierreCajaResponseDTO> cerrarCaja() {
+        CierreCajaResponseDTO resumen = cajaServicio.cerrarCaja();
+        return ResponseEntity.ok(resumen);
     }
 }

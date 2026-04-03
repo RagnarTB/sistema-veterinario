@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -39,6 +41,15 @@ public class VentaServicio {
         private final MovimientoCajaRespositorio movimientoCajaRespositorio;
 
         // Actualizamos el constructor
+        public VentaServicio(VentaRepositorio ventaRepositorio, ClienteRepositorio clienteRepositorio,
+                        ProductoRepositorio productoRepositorio, CajaRepositorio cajaRepositorio,
+                        MovimientoCajaRespositorio movimientoCajaRespositorio) {
+                this.ventaRepositorio = ventaRepositorio;
+                this.clienteRepositorio = clienteRepositorio;
+                this.productoRepositorio = productoRepositorio;
+                this.cajaRepositorio = cajaRepositorio;
+                this.movimientoCajaRespositorio = movimientoCajaRespositorio;
+        }
 
         @Transactional
         public VentaResponseDTO guardar(VentaRequestDTO dto) {
@@ -99,24 +110,12 @@ public class VentaServicio {
                 return mapearAVentaResponseDTO(ventaGuardada);
         }
 
-        public VentaServicio(VentaRepositorio ventaRepositorio, ClienteRepositorio clienteRepositorio,
-                        ProductoRepositorio productoRepositorio, CajaRepositorio cajaRepositorio,
-                        MovimientoCajaRespositorio movimientoCajaRespositorio) {
-                this.ventaRepositorio = ventaRepositorio;
-                this.clienteRepositorio = clienteRepositorio;
-                this.productoRepositorio = productoRepositorio;
-                this.cajaRepositorio = cajaRepositorio;
-                this.movimientoCajaRespositorio = movimientoCajaRespositorio;
-        }
-
         // =========================
         // GET /api/ventas
         // =========================
-        public List<VentaResponseDTO> listarTodas() {
-                return ventaRepositorio.findAll()
-                                .stream()
-                                .map(this::mapearAVentaResponseDTO)
-                                .collect(Collectors.toList());
+        public Page<VentaResponseDTO> listarTodas(Pageable pageable) {
+                return ventaRepositorio.findAll(pageable)
+                                .map(this::mapearAVentaResponseDTO);
         }
 
         // =========================
@@ -146,6 +145,18 @@ public class VentaServicio {
                 CajaDiaria cajaAbierta = cajaRepositorio.findByEstado("ABIERTA")
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                                                 "No se puede anular: No hay una caja abierta para registrar el egreso"));
+
+                // --- NUEVA VALIDACIÓN DE SALDO ---
+                Double ventasActuales = ventaRepositorio.sumarVentasPorCaja(cajaAbierta.getId());
+                ventasActuales = (ventasActuales == null) ? 0.0 : ventasActuales;
+
+                // El saldo real disponible es: Saldo Inicial + Ventas - Egresos previos
+                // Para simplificar, comparamos si el total de ventas acumuladas permite
+                // devolver esta venta
+                if (ventasActuales < venta.getTotal()) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                        "No hay suficiente efectivo en caja para devolver el monto de esta venta.");
+                }
 
                 // 3. Recorrer los detalles y devolver stock (Tu segundo paso)
                 for (DetalleVenta detalle : venta.getDetalles()) {

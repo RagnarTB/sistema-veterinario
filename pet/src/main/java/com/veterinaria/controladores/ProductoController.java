@@ -3,6 +3,8 @@ package com.veterinaria.controladores;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,8 +36,8 @@ public class ProductoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ProductoResponseDTO>> listarProductos() {
-        List<ProductoResponseDTO> productos = productoServicio.listarTodos();
+    public ResponseEntity<Page<ProductoResponseDTO>> listarProductos(Pageable pageable) {
+        Page<ProductoResponseDTO> productos = productoServicio.listarTodos(pageable);
         return ResponseEntity.ok(productos);
     }
 

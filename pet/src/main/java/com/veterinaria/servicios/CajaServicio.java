@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.veterinaria.dtos.CajaRequestDTO;
+import com.veterinaria.dtos.CierreCajaResponseDTO;
 import com.veterinaria.modelos.CajaDiaria;
 import com.veterinaria.modelos.MovimientoCaja;
 import com.veterinaria.modelos.Enums.TipoMovimiento;
@@ -39,7 +40,8 @@ public class CajaServicio {
         cajaRepositorio.save(nuevaCaja);
     }
 
-    public void cerrarCaja() {
+    // Cambiamos 'void' por 'CierreCajaResponseDTO'
+    public CierreCajaResponseDTO cerrarCaja() {
         // 1. Buscar la caja abierta usando el Enum
         CajaDiaria cajaAbierta = cajaRepositorio.findByEstado("ABIERTA")
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -54,7 +56,6 @@ public class CajaServicio {
         totalVentas = (totalVentas == null) ? 0.0 : totalVentas;
 
         // 3. Calcular Ingresos y Egresos extras (Movimientos manuales y devoluciones)
-        // Usamos streams sobre la lista de movimientos de la entidad
         Double ingresosExtras = cajaAbierta.getMovimientos().stream()
                 .filter(m -> m.getTipoMovimiento() == TipoMovimiento.INGRESO)
                 .mapToDouble(MovimientoCaja::getMonto)
@@ -66,10 +67,19 @@ public class CajaServicio {
                 .sum();
 
         // 4. ¡NUEVA FÓRMULA DEL ARQUEO!
-        // Saldo Final = Inicial + Ventas + Ingresos - Egresos
         double saldoCalculado = cajaAbierta.getSaldoInicial() + totalVentas + ingresosExtras - egresosExtras;
         cajaAbierta.setSaldoFinal(saldoCalculado);
 
         cajaRepositorio.save(cajaAbierta);
+
+        // 5. Retornamos el "Recibo" detallado para el Frontend
+        return new com.veterinaria.dtos.CierreCajaResponseDTO(
+                cajaAbierta.getId(),
+                cajaAbierta.getFechaCierre(),
+                cajaAbierta.getSaldoInicial(),
+                totalVentas,
+                ingresosExtras,
+                egresosExtras,
+                saldoCalculado);
     }
 }

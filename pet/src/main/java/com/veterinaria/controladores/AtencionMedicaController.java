@@ -3,6 +3,8 @@ package com.veterinaria.controladores;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -37,8 +39,8 @@ public class AtencionMedicaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<AtencionMedicaResponseDTO>> listarAtenciones() {
-        List<AtencionMedicaResponseDTO> atenciones = atencionMedicaServicio.listarTodos();
+    public ResponseEntity<Page<AtencionMedicaResponseDTO>> listarAtenciones(Pageable pageable) {
+        Page<AtencionMedicaResponseDTO> atenciones = atencionMedicaServicio.listarTodos(pageable);
         return ResponseEntity.ok(atenciones);
     }
 

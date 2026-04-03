@@ -1,21 +1,28 @@
 package com.veterinaria.servicios;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.veterinaria.dtos.CitaRequestDTO;
 import com.veterinaria.dtos.CitaResponseDTO;
+import com.veterinaria.dtos.SlotDisponibilidadDTO;
 import com.veterinaria.modelos.Cita;
+import com.veterinaria.modelos.HorarioVeterinario;
 import com.veterinaria.modelos.Paciente;
 import com.veterinaria.modelos.ServicioMedico;
 import com.veterinaria.modelos.Usuario;
 import com.veterinaria.modelos.Enums.EstadoCita;
 import com.veterinaria.respositorios.CitaRepositorio;
+import com.veterinaria.respositorios.DiaBloqueadoRepositorio;
+import com.veterinaria.respositorios.HorarioVeterinarioRepositorio;
 import com.veterinaria.respositorios.PacienteRepositorio;
 import com.veterinaria.respositorios.ServicioMedicoRepositorio;
 import com.veterinaria.respositorios.UsuarioRepositorio;
@@ -29,12 +36,19 @@ public class CitaServicio {
         private final UsuarioRepositorio usuarioRepositorio;
         private final List<EstadoCita> ESTADOS_IGNORADOS = List.of(EstadoCita.CANCELADA, EstadoCita.NO_ASISTIO);
 
+        private final HorarioVeterinarioRepositorio horarioRepositorio;
+        private final DiaBloqueadoRepositorio diaBloqueadoRepositorio;
+
         public CitaServicio(CitaRepositorio citaRepositorio, PacienteRepositorio pacienteRepositorio,
-                        ServicioMedicoRepositorio servicioRepositorio, UsuarioRepositorio usuarioRepositorio) {
+                        ServicioMedicoRepositorio servicioRepositorio, UsuarioRepositorio usuarioRepositorio,
+                        HorarioVeterinarioRepositorio horarioRepositorio,
+                        DiaBloqueadoRepositorio diaBloqueadoRepositorio) {
                 this.citaRepositorio = citaRepositorio;
                 this.pacienteRepositorio = pacienteRepositorio;
                 this.servicioRepositorio = servicioRepositorio;
                 this.usuarioRepositorio = usuarioRepositorio;
+                this.horarioRepositorio = horarioRepositorio;
+                this.diaBloqueadoRepositorio = diaBloqueadoRepositorio;
         }
 
         public CitaResponseDTO guardar(CitaRequestDTO dto) {
@@ -82,8 +96,8 @@ public class CitaServicio {
                 return mapearAResponse(citaGuardada);
         }
 
-        public List<CitaResponseDTO> listar() {
-                return citaRepositorio.findAll().stream().map(this::mapearAResponse).collect(Collectors.toList());
+        public Page<CitaResponseDTO> listar(Pageable pageable) {
+                return citaRepositorio.findAll(pageable).map(this::mapearAResponse);
         }
 
         public CitaResponseDTO buscarPorId(Long id) {
@@ -165,5 +179,93 @@ public class CitaServicio {
                                 cita.getEstado(), // En el orden correcto (8)
                                 pacientesIds // (9)
                 );
+        }
+
+        // EL MOTOR DE DISPONIBILIDAD
+        public List<SlotDisponibilidadDTO> obtenerDisponibilidad(Long veterinarioId, LocalDate fecha, Long servicioId) {
+
+                // 1. Si el día es feriado o el doctor pidió permiso, devolvemos lista vacía
+                // inmediatamente
+                if (diaBloqueadoRepositorio.estaBloqueadoElDia(fecha, veterinarioId)) {
+                        return List.of();
+                }
+
+                // 2. Buscamos el horario de trabajo del doctor para ese día (ej. LUNES)
+                HorarioVeterinario horario = horarioRepositorio
+                                .findByVeterinarioIdAndDiaSemana(veterinarioId, fecha.getDayOfWeek())
+                                .orElse(null);
+
+                if (horario == null) {
+                        return List.of(); // Ese día no trabaja
+                }
+
+                // 3. Calculamos cuánto dura la atención completa
+                ServicioMedico servicio = servicioRepositorio.findById(servicioId)
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                                "Servicio no encontrado"));
+                int duracionTotal = servicio.getDuracionMinutos() + servicio.getBufferMinutos();
+
+                // 4. Traemos todas las citas que ya tiene el doctor ese día
+                List<Cita> citasDelDia = citaRepositorio.buscarCitasAgendadasDelDia(veterinarioId, fecha,
+                                ESTADOS_IGNORADOS);
+
+                List<SlotDisponibilidadDTO> slotsDisponibles = new java.util.ArrayList<>();
+                LocalTime horaActual = horario.getHoraEntrada();
+                if (fecha.equals(LocalDate.now()) && LocalTime.now().isAfter(horaActual)) {
+                        horaActual = LocalTime.now();
+                }
+
+                // 5. El Bucle Principal: Iteramos minuto a minuto generando bloques
+                while (horaActual.plusMinutes(duracionTotal).compareTo(horario.getHoraSalida()) <= 0) {
+                        LocalTime finSlot = horaActual.plusMinutes(duracionTotal);
+
+                        // A. ¿Choca con el refrigerio? (Si tiene refrigerio configurado)
+                        boolean chocaConRefrigerio = false;
+                        if (horario.getInicioRefrigerio() != null && horario.getFinRefrigerio() != null) {
+                                if (horaActual.isBefore(horario.getFinRefrigerio())
+                                                && finSlot.isAfter(horario.getInicioRefrigerio())) {
+                                        chocaConRefrigerio = true;
+                                        // Saltamos el tiempo directo al fin del refrigerio para ahorrar iteraciones
+                                        horaActual = horario.getFinRefrigerio();
+                                        continue;
+                                }
+                        }
+
+                        // B. ¿Choca con alguna cita existente?
+                        boolean chocaConCita = false;
+                        for (Cita cita : citasDelDia) {
+                                if (horaActual.isBefore(cita.getHoraFin()) && finSlot.isAfter(cita.getHoraInicio())) {
+                                        chocaConCita = true;
+                                        // Saltamos el tiempo al final de esa cita para buscar el siguiente hueco
+                                        horaActual = cita.getHoraFin();
+                                        break;
+                                }
+                        }
+
+                        // C. Si sobrevivió a las validaciones, ¡Tenemos un hueco libre!
+                        if (!chocaConRefrigerio && !chocaConCita) {
+                                slotsDisponibles.add(new SlotDisponibilidadDTO(horaActual, finSlot));
+                                // Avanzamos la hora para buscar el siguiente bloque.
+                                // Podrías avanzar 'duracionTotal' o intervalos fijos de 15 mins. Lo haremos
+                                // fijo cada 15 mins para dar flexibilidad al usuario.
+                                horaActual = horaActual.plusMinutes(15);
+                        }
+                }
+
+                return slotsDisponibles;
+        }
+
+        // MÉTODO PARA EL TABLERO DE RECEPCIÓN
+        public void cambiarEstado(Long id, EstadoCita nuevoEstado) {
+                Cita citaDb = citaRepositorio.findById(id)
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                                "Cita no encontrada con ID: " + id));
+
+                // Aquí podríamos añadir lógica de negocio compleja (ej. prohibir pasar de
+                // CANCELADA a COMPLETADA)
+                // Por ahora, confiamos en que el frontend enviará transiciones lógicas.
+                citaDb.setEstado(nuevoEstado);
+
+                citaRepositorio.save(citaDb);
         }
 }
