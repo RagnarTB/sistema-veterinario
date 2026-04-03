@@ -301,6 +301,9 @@ class PacienteControllerTest {
     }
 }
 
+agregando seguridad por roles para los metodos
+@PreAuthorize en la creacion de atencion medica
+
 # 8. Mapa de Ruta del Proyecto
 
 Estado actual del desarrollo:
