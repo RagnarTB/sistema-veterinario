@@ -1,5 +1,8 @@
 package com.veterinaria.respositorios;
 
-public interface DetalleVentaRepositorio<DetalleVenta, Long> {
+import org.springframework.data.jpa.repository.JpaRepository;
 
+import com.veterinaria.modelos.DetalleVenta;
+
+public interface DetalleVentaRepositorio extends JpaRepository<DetalleVenta, Long> {
 }

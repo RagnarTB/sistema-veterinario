@@ -16,9 +16,11 @@ import lombok.NoArgsConstructor;
 public class CitaResponseDTO {
     private Long id;
     private LocalDate fecha;
-    private LocalTime hora;
+    private LocalTime horaInicio;
+    private LocalTime horaFin;
+    private String servicioNombre;
+    private Long veterinarioId;
     private String motivo;
     private EstadoCita estado;
-    // EL CAMBIO
     private List<Long> pacienteIds;
 }

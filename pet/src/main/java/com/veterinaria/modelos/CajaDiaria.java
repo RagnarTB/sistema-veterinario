@@ -1,6 +1,7 @@
 package com.veterinaria.modelos;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -38,5 +39,5 @@ public class CajaDiaria {
     private String estado; // Guardaremos "ABIERTA" o "CERRADA"
 
     @OneToMany(mappedBy = "cajaDiaria", cascade = CascadeType.ALL)
-    private List<MovimientoCaja> movimientos;
+    private List<MovimientoCaja> movimientos = new ArrayList<>();
 }

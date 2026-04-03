@@ -15,8 +15,12 @@ public class CitaRequestDTO {
     @NotNull(message = "La fecha es obligatoria")
     private LocalDate fecha;
 
-    @NotNull(message = "La hora es obligatoria")
-    private LocalTime hora;
+    private LocalTime horaInicio;
+
+    @NotNull
+    private Long servicioId;
+    @NotNull
+    private Long veterinarioId;
 
     @NotBlank(message = "El motivo es obligatorio")
     private String motivo;

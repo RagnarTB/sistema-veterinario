@@ -62,6 +62,8 @@ class CajaServicioTest {
         cajaAbierta.setEstado("ABIERTA");
         cajaAbierta.setFechaApertura(LocalDateTime.now().minusHours(8));
 
+        cajaAbierta.setMovimientos(new java.util.ArrayList<>());
+
         when(cajaRepositorio.findByEstado("ABIERTA")).thenReturn(Optional.of(cajaAbierta));
 
         // 2. Simulamos que el sistema calculó que hoy se vendieron 250 dólares

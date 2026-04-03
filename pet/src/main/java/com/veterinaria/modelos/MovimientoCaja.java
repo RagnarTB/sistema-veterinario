@@ -5,6 +5,9 @@ import java.time.LocalDateTime;
 import com.veterinaria.modelos.Enums.TipoMovimiento;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -18,6 +21,8 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "movimiento_caja")
 public class MovimientoCaja {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String concepto;
     private Double monto;

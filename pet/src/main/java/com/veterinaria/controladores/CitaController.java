@@ -59,7 +59,7 @@ public class CitaController {
         return ResponseEntity.ok(citaActualizada);
     }
 
-    @DeleteMapping("{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarCita(@PathVariable Long id) {
         citaServicio.eliminar(id);
 

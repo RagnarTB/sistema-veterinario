@@ -3,6 +3,7 @@ package com.veterinaria.modelos;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -45,5 +46,8 @@ public class Cliente {
     @OneToOne
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
+
+    @Column(nullable = false)
+    private Boolean esInvitado = false; // Por defecto es false para no romper los clientes actuales
 
 }

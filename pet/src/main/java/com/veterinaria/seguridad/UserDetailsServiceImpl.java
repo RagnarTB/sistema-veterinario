@@ -23,9 +23,13 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        // 1. Buscamos nuestro usuario en la base de datos por email
+        // 1. Buscamos nuestro usuario en la base de datos por email y validamos si esta activo
         Usuario usuario = usuarioRepositorio.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
+
+        if (!usuario.getActivo()) {
+            throw new UsernameNotFoundException("Usuario inactivo");
+        }
 
         // 2. Traducimos nuestros Roles a GrantedAuthorities de Spring Security
         var authorities = usuario.getRoles().stream()
