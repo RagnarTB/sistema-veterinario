@@ -3,7 +3,9 @@ package com.veterinaria.controladores;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -13,9 +15,9 @@ import com.veterinaria.servicios.ProductoServicio;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// NOTA: Aún no hemos creado el ProductoController ni el ProductoServicio. 
 // Por eso, algunas líneas de aquí abajo te marcarán error en tu IDE (letras rojas). ¡Eso es TDD!
-@WebMvcTest(controllers = ProductoController.class, excludeAutoConfiguration = { SecurityAutoConfiguration.class })
+@SpringBootTest
+@AutoConfigureMockMvc(addFilters = false)
 class ProductoControllerTest {
 
     @Autowired

@@ -40,7 +40,7 @@ class PacienteControllerTest {
                 String pacienteJson = """
                                 {
                                     "nombre": "Firulais",
-                                    "especie": "Perro",
+                                    "especieId": 1,
                                     "raza": "Mestizo",
                                     "clienteId": 1
                                 }
@@ -58,7 +58,7 @@ class PacienteControllerTest {
                 String pacienteInvalidoJson = """
                                         {
                                 "nombre":"",
-                                "especie": "Perro",
+                                "especieId": 1,
                                 "raza":"Mestizo"}
                                         """;
                 mockMvc.perform(post("/api/pacientes")
@@ -97,7 +97,7 @@ class PacienteControllerTest {
                 String pacienteActualizadoJson = """
                                 {
                                     "nombre": "Firulais Corregido",
-                                    "especie": "Perro",
+                                    "especieId": 1,
                                     "raza": "Mestizo",
                                     "clienteId": 1
                                 }

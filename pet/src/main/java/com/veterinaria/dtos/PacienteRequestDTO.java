@@ -9,8 +9,10 @@ public class PacienteRequestDTO {
     @NotBlank(message = "El nombre del paciente es obligatorio")
     private String nombre;
 
-    @NotBlank(message = "La especie es obligatoria")
-    private String especie;
+    // ¡EL CAMBIO! Extirpamos el String y pedimos el ID (NotNull porque es número,
+    // no texto)
+    @NotNull(message = "El ID de la especie es obligatorio")
+    private Long especieId;
 
     private String raza;
 

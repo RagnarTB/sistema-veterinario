@@ -1,129 +1,109 @@
 package com.veterinaria.servicios;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.veterinaria.dtos.PacienteRequestDTO;
 import com.veterinaria.dtos.PacienteResponseDTO;
 import com.veterinaria.modelos.Cliente;
+import com.veterinaria.modelos.Especie;
 import com.veterinaria.modelos.Paciente;
 import com.veterinaria.respositorios.ClienteRepositorio;
+import com.veterinaria.respositorios.EspecieRepositorio;
 import com.veterinaria.respositorios.PacienteRepositorio;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 @Service
 public class PacienteServicio {
 
-        private PacienteRepositorio pacienteRepositorio;
-
-        // Agregamos el repositorio de clientes para poder buscar al dueño
+        private final PacienteRepositorio pacienteRepositorio;
         private final ClienteRepositorio clienteRepositorio;
+        private final EspecieRepositorio especieRepositorio; // Declarado
 
-        // Actualizamos el constructor
-        public PacienteServicio(PacienteRepositorio pacienteRepositorio, ClienteRepositorio clienteRepositorio) {
+        // 1. CORRECCIÓN: Constructor con los 3 repositorios inyectados
+        public PacienteServicio(PacienteRepositorio pacienteRepositorio,
+                        ClienteRepositorio clienteRepositorio,
+                        EspecieRepositorio especieRepositorio) {
                 this.pacienteRepositorio = pacienteRepositorio;
                 this.clienteRepositorio = clienteRepositorio;
+                this.especieRepositorio = especieRepositorio;
         }
 
-        // Nota cómo cambiamos la firma: Recibe un RequestDTO y devuelve un ResponseDTO
         public PacienteResponseDTO guardar(PacienteRequestDTO dto) {
-                // 1. PRIMERO: Buscamos al dueño por su ID
                 Cliente dueno = clienteRepositorio.findById(dto.getClienteId())
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "No se puede crear el paciente. Cliente no encontrado con ID: "
-                                                                + dto.getClienteId()));
+                                                "Cliente no encontrado con ID: " + dto.getClienteId()));
 
-                // 2. Mapeo de entrada: DTO -> Entidad
+                Especie especie = especieRepositorio.findById(dto.getEspecieId())
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                                "Especie no encontrada con id: " + dto.getEspecieId()));
+
                 Paciente paciente = new Paciente();
                 paciente.setNombre(dto.getNombre());
-                paciente.setEspecie(dto.getEspecie());
+                paciente.setEspecie(especie);
                 paciente.setRaza(dto.getRaza());
-
-                // 3. LA RELACIÓN MÁGICA: Le asignamos el dueño al perrito
                 paciente.setCliente(dueno);
 
-                // 4. Guardar en base de datos
                 Paciente pacienteGuardado = pacienteRepositorio.save(paciente);
 
-                // 5. Mapeo de salida: Entidad -> DTO
-                PacienteResponseDTO respuesta = new PacienteResponseDTO();
-                respuesta.setId(pacienteGuardado.getId());
-                respuesta.setNombre(pacienteGuardado.getNombre());
-                respuesta.setEspecie(pacienteGuardado.getEspecie());
-                respuesta.setRaza(pacienteGuardado.getRaza());
-                respuesta.setClienteId(dueno.getId());
-
-                return respuesta;
+                // Usamos nuestro método ayudante
+                return mapearAResponse(pacienteGuardado);
         }
 
         public Page<PacienteResponseDTO> listarTodos(Pageable pageable) {
-                // JpaRepository ya tiene un findAll que acepta Pageable por defecto, ¡es
-                // mágico!
                 Page<Paciente> paginaDePacientes = pacienteRepositorio.findAll(pageable);
-
-                // Convertimos la página de Entidades a una página de DTOs
-                return paginaDePacientes.map(paciente -> new PacienteResponseDTO(
-                                paciente.getId(),
-                                paciente.getNombre(),
-                                paciente.getEspecie(),
-                                paciente.getRaza(),
-                                paciente.getCliente().getId()));
+                // Usamos nuestro método ayudante para mapear toda la lista automáticamente
+                return paginaDePacientes.map(this::mapearAResponse);
         }
 
         public PacienteResponseDTO buscarPorId(Long id) {
                 return pacienteRepositorio.findById(id)
-                                .map(paciente -> new PacienteResponseDTO(
-                                                paciente.getId(),
-                                                paciente.getNombre(),
-                                                paciente.getEspecie(),
-                                                paciente.getRaza(),
-                                                paciente.getCliente().getId()))
+                                .map(this::mapearAResponse) // Usamos nuestro método ayudante
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                                 "Paciente no encontrado con ID: " + id));
         }
 
         public PacienteResponseDTO actualizar(Long id, PacienteRequestDTO dto) {
-                // 1. PRIMERO BUSCAMOS: Usamos el mismo bloque de código que ya conoces
-                // Si no existe, explota con un 404 y no avanza a la siguiente línea.
                 Paciente pacienteDb = pacienteRepositorio.findById(id)
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                                 "Paciente no encontrado con ID: " + id));
 
-                // 2. Buscamos al dueño (¡ESTO FALTABA!)
                 Cliente dueno = clienteRepositorio.findById(dto.getClienteId())
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                                 "Cliente no encontrado con ID: " + dto.getClienteId()));
 
-                // 2. LUEGO MODIFICAMOS: Actualizamos la entidad que sacamos de la base de datos
-                // con los datos nuevos que vienen en el DTO "sobre de correo"
-                pacienteDb.setNombre(dto.getNombre());
-                pacienteDb.setEspecie(dto.getEspecie());
-                pacienteDb.setRaza(dto.getRaza());
+                // 2. CORRECCIÓN: Buscamos la Especie en BD antes de actualizar
+                Especie especie = especieRepositorio.findById(dto.getEspecieId())
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                                "Especie no encontrada con id: " + dto.getEspecieId()));
 
-                // 3. GUARDAMOS: Como la entidad "pacienteDb" ya tiene un ID,
-                // el .save() de JPA es lo suficientemente inteligente para saber que
-                // debe hacer un UPDATE en lugar de un INSERT.
+                pacienteDb.setNombre(dto.getNombre());
+                pacienteDb.setEspecie(especie); // Asignamos el objeto Especie
+                pacienteDb.setRaza(dto.getRaza());
+                pacienteDb.setCliente(dueno);
+
                 Paciente pacienteGuardado = pacienteRepositorio.save(pacienteDb);
 
-                // 4. DEVOLVEMOS EL TICKET: Mapeamos a ResponseDTO
-                return new PacienteResponseDTO(
-                                pacienteGuardado.getId(),
-                                pacienteGuardado.getNombre(),
-                                pacienteGuardado.getEspecie(),
-                                pacienteGuardado.getRaza(),
-                                pacienteGuardado.getCliente().getId());
+                return mapearAResponse(pacienteGuardado);
         }
 
         public void eliminar(Long id) {
-                // 1. Verificamos si existe (reutilizamos la lógica que ya dominas)
                 Paciente pacienteDb = pacienteRepositorio.findById(id)
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                                 "Paciente no encontrado con ID: " + id));
 
-                // 2. Si pasó la línea anterior sin explotar, significa que existe, así que lo
-                // borramos
                 pacienteRepositorio.delete(pacienteDb);
         }
 
+        // --- 3. CORRECCIÓN: EL MÉTODO AYUDANTE (Refactorización Limpia) ---
+        private PacienteResponseDTO mapearAResponse(Paciente paciente) {
+                return new PacienteResponseDTO(
+                                paciente.getId(),
+                                paciente.getNombre(),
+                                paciente.getEspecie().getNombre(), // Extraemos el nombre de la especie
+                                paciente.getRaza(),
+                                paciente.getCliente().getId());
+        }
 }

@@ -1,5 +1,7 @@
 package com.veterinaria.modelos;
 
+import org.hibernate.envers.Audited;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -17,6 +19,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "atenciones_medicas")
+@Audited //guarda versiones de cambios mejor dicho historial
 public class AtencionMedica {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

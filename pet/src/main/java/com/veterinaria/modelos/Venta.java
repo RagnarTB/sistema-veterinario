@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.veterinaria.modelos.Enums.EstadoVenta;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -36,6 +38,12 @@ public class Venta {
     // detalles automáticamente
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetalleVenta> detalles = new ArrayList<>();
+
+    private EstadoVenta estado;
+
+    @ManyToOne
+    @JoinColumn(name = "caja_id")
+    private CajaDiaria caja;
 
     // Método de conveniencia para mantener sincronizada la relación bidireccional
     public void agregarDetalle(DetalleVenta detalle) {

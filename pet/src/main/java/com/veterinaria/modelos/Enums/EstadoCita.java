@@ -1,4 +1,4 @@
-package com.veterinaria.modelos;
+package com.veterinaria.modelos.Enums;
 
 public enum EstadoCita {
     PENDIENTE,

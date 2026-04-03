@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -30,13 +31,17 @@ public class Paciente {
     private Long Id;
 
     private String nombre;
-    private String especie;
+    // Actualizacion de la especie con tabla
+    @ManyToOne
+    @JoinColumn(name = "especie_id", nullable = false)
+    private Especie especie;
     private String raza;
     @ManyToOne(fetch = FetchType.LAZY) // "Muchos pacientes pertenecen a Un cliente"
     @JoinColumn(name = "cliente_id") // se llamará la columna en la base de datos
     private Cliente cliente;
 
-    @OneToMany(mappedBy = "paciente", cascade = CascadeType.ALL, orphanRemoval = true)
+    // EL CAMBIO Actualizamos el lado pasivo de la relación
+    @ManyToMany(mappedBy = "pacientes")
     private List<Cita> citas;
 
 }

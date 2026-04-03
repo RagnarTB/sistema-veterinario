@@ -5,112 +5,101 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.veterinaria.dtos.CitaRequestDTO;
 import com.veterinaria.dtos.CitaResponseDTO;
 import com.veterinaria.modelos.Cita;
-import com.veterinaria.modelos.EstadoCita;
 import com.veterinaria.modelos.Paciente;
+import com.veterinaria.modelos.Enums.EstadoCita;
 import com.veterinaria.respositorios.CitaRepositorio;
 import com.veterinaria.respositorios.PacienteRepositorio;
 
 @Service
 public class CitaServicio {
 
-    private CitaRepositorio citaRepositorio;
-    private final PacienteRepositorio pacienteRepositorio;
+        private final CitaRepositorio citaRepositorio;
+        private final PacienteRepositorio pacienteRepositorio;
 
-    public CitaServicio(CitaRepositorio citaRepositorio, PacienteRepositorio pacienteRepositorio) {
-        this.citaRepositorio = citaRepositorio;
-        this.pacienteRepositorio = pacienteRepositorio;
-    }
+        public CitaServicio(CitaRepositorio citaRepositorio, PacienteRepositorio pacienteRepositorio) {
+                this.citaRepositorio = citaRepositorio;
+                this.pacienteRepositorio = pacienteRepositorio;
+        }
 
-    public CitaResponseDTO guardar(CitaRequestDTO dto) {
-        Paciente paciente = pacienteRepositorio.findById(dto.getPacienteId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "No se puede crear la cita, paciente no encontrado : " + dto.getPacienteId())
+        public CitaResponseDTO guardar(CitaRequestDTO dto) {
+                // ¡NUEVO! Buscamos a TODOS los pacientes de la lista de IDs a la vez
+                List<Paciente> pacientes = pacienteRepositorio.findAllById(dto.getPacienteIds());
 
-                );
+                if (pacientes.isEmpty()) {
+                        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontraron los pacientes");
+                }
 
-        Cita cita = new Cita();
-        cita.setEstado(EstadoCita.PENDIENTE);
-        cita.setFecha(dto.getFecha());
-        cita.setHora(dto.getHora());
-        cita.setMotivo(dto.getMotivo());
-        cita.setPaciente(paciente);
+                Cita cita = new Cita();
+                cita.setEstado(EstadoCita.PENDIENTE);
+                cita.setFecha(dto.getFecha());
+                cita.setHora(dto.getHora());
+                cita.setMotivo(dto.getMotivo());
+                cita.setPacientes(pacientes); // Guardamos la lista completa
 
-        Cita citaGuardada = citaRepositorio.save(cita);
+                Cita citaGuardada = citaRepositorio.save(cita);
 
-        CitaResponseDTO respuesta = new CitaResponseDTO();
-        respuesta.setId(citaGuardada.getId());
-        respuesta.setEstado(citaGuardada.getEstado());
-        respuesta.setFecha(citaGuardada.getFecha());
-        respuesta.setHora(citaGuardada.getHora());
-        respuesta.setMotivo(citaGuardada.getMotivo());
-        respuesta.setPacienteId(paciente.getId());
-        return respuesta;
+                return mapearAResponse(citaGuardada);
+        }
 
-    }
+        public List<CitaResponseDTO> listar() {
+                List<Cita> citas = citaRepositorio.findAll();
+                return citas.stream().map(this::mapearAResponse).collect(Collectors.toList());
+        }
 
-    public List<CitaResponseDTO> listar() {
-        List<Cita> citas = citaRepositorio.findAll();
-        return citas.stream().map(cita -> new CitaResponseDTO(
-                cita.getId(),
-                cita.getFecha(),
-                cita.getHora(),
-                cita.getMotivo(),
-                cita.getEstado(),
-                cita.getPaciente().getId()))
-                .collect(Collectors.toList());
-    }
+        public CitaResponseDTO buscarPorId(Long id) {
+                return citaRepositorio.findById(id)
+                                .map(this::mapearAResponse)
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                                "Cita no encontrada con ID: " + id));
+        }
 
-    public CitaResponseDTO buscarPorId(Long id) {
-        return citaRepositorio.findById(id)
-                .map(cita -> new CitaResponseDTO(
-                        cita.getId(),
-                        cita.getFecha(),
-                        cita.getHora(),
-                        cita.getMotivo(),
-                        cita.getEstado(),
-                        cita.getPaciente().getId()))
-                .orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cita no encontrada con ID: " + id));
-    }
+        public CitaResponseDTO actualizar(Long id, CitaRequestDTO dto) {
+                Cita citaDb = citaRepositorio.findById(id)
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                                "Cita no encontrada con ID: " + id));
 
-    public CitaResponseDTO actualizar(Long id, CitaRequestDTO dto) {
-        Cita citaDb = citaRepositorio.findById(id)
-                .orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cita no encontrada con ID: " + id));
+                List<Paciente> pacientes = pacienteRepositorio.findAllById(dto.getPacienteIds());
+                if (pacientes.isEmpty()) {
+                        throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                        "No se encontraron los pacientes para actualizar");
+                }
 
-        Paciente paciente = pacienteRepositorio.findById(dto.getPacienteId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "No se puede actualizar la cita, paciente no encontrado : " + dto.getPacienteId())
+                citaDb.setFecha(dto.getFecha());
+                citaDb.setHora(dto.getHora());
+                citaDb.setMotivo(dto.getMotivo());
+                citaDb.setPacientes(pacientes);
 
-                );
+                Cita citaGuardada = citaRepositorio.save(citaDb);
 
-        citaDb.setFecha(dto.getFecha());
-        citaDb.setHora(dto.getHora());
-        citaDb.setMotivo(dto.getMotivo());
-        citaDb.setPaciente(paciente);
+                return mapearAResponse(citaGuardada);
+        }
 
-        Cita citaGuardada = citaRepositorio.save(citaDb);
+        public void eliminar(Long id) {
+                Cita citaDb = citaRepositorio.findById(id)
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                                "Cita no encontrada con ID: " + id));
+                citaRepositorio.delete(citaDb);
+        }
 
-        return new CitaResponseDTO(
-                citaGuardada.getId(),
-                citaGuardada.getFecha(),
-                citaGuardada.getHora(),
-                citaGuardada.getMotivo(),
-                citaGuardada.getEstado(),
-                citaGuardada.getPaciente().getId());
-    }
+        // --- MÉTODO AYUDANTE PARA MAPEAR ---
+        private CitaResponseDTO mapearAResponse(Cita cita) {
+                // Extraemos solo los IDs de la lista de pacientes para enviarlos a Angular en
+                // el Response
+                List<Long> pacientesIds = cita.getPacientes().stream()
+                                .map(Paciente::getId)
+                                .collect(Collectors.toList());
 
-    public void eliminar(Long id) {
-        Cita citaDb = citaRepositorio.findById(id)
-                .orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cita no encontrada con ID: " + id));
-        citaRepositorio.delete(citaDb);
-    }
-
+                return new CitaResponseDTO(
+                                cita.getId(),
+                                cita.getFecha(),
+                                cita.getHora(),
+                                cita.getMotivo(),
+                                cita.getEstado(),
+                                pacientesIds);
+        }
 }

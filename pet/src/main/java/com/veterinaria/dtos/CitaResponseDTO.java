@@ -2,12 +2,10 @@ package com.veterinaria.dtos;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List; // ¡No olvides este import!
 
-import com.veterinaria.modelos.EstadoCita;
-import com.veterinaria.modelos.Paciente;
+import com.veterinaria.modelos.Enums.EstadoCita;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,6 +19,6 @@ public class CitaResponseDTO {
     private LocalTime hora;
     private String motivo;
     private EstadoCita estado;
-    private Long pacienteId;
-
+    // EL CAMBIO
+    private List<Long> pacienteIds;
 }
