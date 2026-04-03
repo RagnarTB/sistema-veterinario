@@ -65,7 +65,7 @@ class CajaServicioTest {
         when(cajaRepositorio.findByEstado("ABIERTA")).thenReturn(Optional.of(cajaAbierta));
 
         // 2. Simulamos que el sistema calculó que hoy se vendieron 250 dólares
-        when(ventaRepositorio.sumarVentasPorRangoDeFechas(any(), any())).thenReturn(250.0);
+        when(ventaRepositorio.sumarVentasPorCaja(any())).thenReturn(250.0);
 
         // 3. El administrador oprime el botón de "Cerrar Caja"
         cajaServicio.cerrarCaja();
