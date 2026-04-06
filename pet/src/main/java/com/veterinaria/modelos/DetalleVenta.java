@@ -18,13 +18,16 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 public class DetalleVenta {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private Integer cantidad;
+
     @Column(precision = 19, scale = 2)
     private BigDecimal precioUnitario;
+
     @Column(precision = 19, scale = 2)
     private BigDecimal subtotal;
 
@@ -32,7 +35,13 @@ public class DetalleVenta {
     @JoinColumn(name = "venta_id")
     private Venta venta;
 
+    // Un detalle puede ser un producto físico con stock
     @ManyToOne
-    @JoinColumn(name = "producto_id")
+    @JoinColumn(name = "producto_id") // nullable por defecto: puede ser null si el ítem es un servicio
     private Producto producto;
+
+    // O puede ser un servicio médico (consulta, corte de pelo, etc.)
+    @ManyToOne
+    @JoinColumn(name = "servicio_medico_id") // nullable: puede ser null si el ítem es un producto
+    private ServicioMedico servicio;
 }

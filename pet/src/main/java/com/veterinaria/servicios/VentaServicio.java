@@ -21,6 +21,7 @@ import com.veterinaria.modelos.Cliente;
 import com.veterinaria.modelos.DetalleVenta;
 import com.veterinaria.modelos.MovimientoCaja;
 import com.veterinaria.modelos.Producto;
+import com.veterinaria.modelos.ServicioMedico;
 import com.veterinaria.modelos.Venta;
 import com.veterinaria.modelos.Enums.EstadoVenta;
 import com.veterinaria.modelos.Enums.TipoMovimiento;
@@ -28,6 +29,7 @@ import com.veterinaria.respositorios.CajaRepositorio;
 import com.veterinaria.respositorios.ClienteRepositorio;
 import com.veterinaria.respositorios.MovimientoCajaRespositorio;
 import com.veterinaria.respositorios.ProductoRepositorio;
+import com.veterinaria.respositorios.ServicioMedicoRepositorio;
 import com.veterinaria.respositorios.VentaRepositorio;
 
 import jakarta.transaction.Transactional;
@@ -35,183 +37,237 @@ import jakarta.transaction.Transactional;
 @Service
 public class VentaServicio {
 
-        private final VentaRepositorio ventaRepositorio;
-        private final ClienteRepositorio clienteRepositorio;
-        private final ProductoRepositorio productoRepositorio;
-        private final CajaRepositorio cajaRepositorio;
-        private final MovimientoCajaRespositorio movimientoCajaRespositorio;
+    private final VentaRepositorio ventaRepositorio;
+    private final ClienteRepositorio clienteRepositorio;
+    private final ProductoRepositorio productoRepositorio;
+    private final ServicioMedicoRepositorio servicioMedicoRepositorio;
+    private final CajaRepositorio cajaRepositorio;
+    private final MovimientoCajaRespositorio movimientoCajaRespositorio;
 
-        public VentaServicio(VentaRepositorio ventaRepositorio, ClienteRepositorio clienteRepositorio,
-                        ProductoRepositorio productoRepositorio, CajaRepositorio cajaRepositorio,
-                        MovimientoCajaRespositorio movimientoCajaRespositorio) {
-                this.ventaRepositorio = ventaRepositorio;
-                this.clienteRepositorio = clienteRepositorio;
-                this.productoRepositorio = productoRepositorio;
-                this.cajaRepositorio = cajaRepositorio;
-                this.movimientoCajaRespositorio = movimientoCajaRespositorio;
-        }
+    public VentaServicio(VentaRepositorio ventaRepositorio,
+            ClienteRepositorio clienteRepositorio,
+            ProductoRepositorio productoRepositorio,
+            ServicioMedicoRepositorio servicioMedicoRepositorio,
+            CajaRepositorio cajaRepositorio,
+            MovimientoCajaRespositorio movimientoCajaRespositorio) {
+        this.ventaRepositorio = ventaRepositorio;
+        this.clienteRepositorio = clienteRepositorio;
+        this.productoRepositorio = productoRepositorio;
+        this.servicioMedicoRepositorio = servicioMedicoRepositorio;
+        this.cajaRepositorio = cajaRepositorio;
+        this.movimientoCajaRespositorio = movimientoCajaRespositorio;
+    }
 
-        @Transactional
-        public VentaResponseDTO guardar(VentaRequestDTO dto) {
+    // =========================
+    // POST /api/ventas
+    // =========================
+    @Transactional
+    public VentaResponseDTO guardar(VentaRequestDTO dto) {
 
-                // ------------------------------------------------------------------
-                // REGLA DE NEGOCIO: No se puede vender con caja cerrada
-                // ------------------------------------------------------------------
-                CajaDiaria cajaAbierta = cajaRepositorio.findByEstado("ABIERTA")
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                                                "No se puede realizar la venta porque la caja está cerrada"));
+        // REGLA DE NEGOCIO: No se puede vender con la caja cerrada
+        CajaDiaria cajaAbierta = cajaRepositorio.findByEstado("ABIERTA")
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "No se puede realizar la venta porque la caja está cerrada"));
 
-                Cliente cliente = clienteRepositorio.findById(dto.getClienteId())
-                                .orElseThrow(() -> new ResponseStatusException(
-                                                HttpStatus.NOT_FOUND,
-                                                "Cliente no encontrado con id: " + dto.getClienteId()));
+        Cliente cliente = clienteRepositorio.findById(dto.getClienteId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Cliente no encontrado con id: " + dto.getClienteId()));
 
-                Venta venta = new Venta();
-                venta.setCliente(cliente);
-                venta.setFechaHora(LocalDateTime.now());
-                venta.setCaja(cajaAbierta);
+        Venta venta = new Venta();
+        venta.setCliente(cliente);
+        venta.setFechaHora(LocalDateTime.now());
+        venta.setCaja(cajaAbierta);
 
-                BigDecimal totalVenta = BigDecimal.ZERO;
+        BigDecimal totalVenta = BigDecimal.ZERO;
 
-                for (DetalleVentaRequestDTO detalleDto : dto.getDetalles()) {
+        for (DetalleVentaRequestDTO detalleDto : dto.getDetalles()) {
 
-                        Producto producto = productoRepositorio.findById(detalleDto.getProductoId())
-                                        .orElseThrow(() -> new ResponseStatusException(
-                                                        HttpStatus.NOT_FOUND,
-                                                        "Producto no encontrado con id: "
-                                                                        + detalleDto.getProductoId()));
+            // ----------------------------------------------------------
+            // VALIDACIÓN PREVIA: debe venir exactamente uno de los dos IDs
+            // ----------------------------------------------------------
+            boolean tieneProducto = detalleDto.getProductoId() != null;
+            boolean tieneServicio = detalleDto.getServicioId() != null;
 
-                        if (!producto.getActivo()) {
-                                throw new ResponseStatusException(
-                                                HttpStatus.BAD_REQUEST,
-                                                "El producto '" + producto.getNombre()
-                                                                + "' se encuentra inactivo y no puede ser vendido.");
-                        }
+            if (!tieneProducto && !tieneServicio) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Cada línea del detalle debe tener un 'productoId' o un 'servicioId'.");
+            }
+            if (tieneProducto && tieneServicio) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Cada línea del detalle no puede tener 'productoId' y 'servicioId' al mismo tiempo.");
+            }
 
-                        if (producto.getStockActual() < detalleDto.getCantidad()) {
-                                throw new ResponseStatusException(
-                                                HttpStatus.BAD_REQUEST,
-                                                "No hay stock suficiente para: " + producto.getNombre());
-                        }
+            DetalleVenta nuevoDetalle = new DetalleVenta();
+            nuevoDetalle.setCantidad(detalleDto.getCantidad());
 
-                        producto.setStockActual(
-                                        producto.getStockActual() - detalleDto.getCantidad());
+            if (tieneProducto) {
+                // ---- RAMA PRODUCTO: tiene stock, se valida y se descuenta ----
+                Producto producto = productoRepositorio.findById(detalleDto.getProductoId())
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Producto no encontrado con id: " + detalleDto.getProductoId()));
 
-                        // Multiplicación con BigDecimal: precio * cantidad
-                        BigDecimal subtotal = producto.getPrecio()
-                                        .multiply(BigDecimal.valueOf(detalleDto.getCantidad()));
-                        totalVenta = totalVenta.add(subtotal);
-
-                        DetalleVenta nuevoDetalle = new DetalleVenta();
-                        nuevoDetalle.setProducto(producto);
-                        nuevoDetalle.setCantidad(detalleDto.getCantidad());
-                        nuevoDetalle.setPrecioUnitario(producto.getPrecio());
-                        nuevoDetalle.setSubtotal(subtotal);
-
-                        venta.agregarDetalle(nuevoDetalle);
+                if (!producto.getActivo()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "El producto '" + producto.getNombre()
+                                    + "' está inactivo y no puede venderse.");
                 }
 
-                venta.setTotal(totalVenta);
-                venta.setEstado(EstadoVenta.ACTIVA);
-
-                Venta ventaGuardada = ventaRepositorio.save(venta);
-
-                return mapearAVentaResponseDTO(ventaGuardada);
-        }
-
-        // =========================
-        // GET /api/ventas
-        // =========================
-        public Page<VentaResponseDTO> listarTodas(Pageable pageable) {
-                return ventaRepositorio.findAll(pageable)
-                                .map(this::mapearAVentaResponseDTO);
-        }
-
-        // =========================
-        // GET /api/ventas/{id}
-        // =========================
-        public VentaResponseDTO buscarPorId(Long id) {
-                Venta venta = ventaRepositorio.findById(id)
-                                .orElseThrow(() -> new ResponseStatusException(
-                                                HttpStatus.NOT_FOUND,
-                                                "Venta no encontrada con id: " + id));
-
-                return mapearAVentaResponseDTO(venta);
-        }
-
-        @Transactional
-        public MensajeResponseDTO anularVenta(Long idVenta) {
-                // 1. Buscar la venta
-                Venta venta = ventaRepositorio.findById(idVenta)
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Venta no encontrada"));
-
-                // Validación: No anular lo ya anulado
-                if (venta.getEstado() == EstadoVenta.ANULADA) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La venta ya está anulada");
+                if (producto.getStockActual() < detalleDto.getCantidad()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Stock insuficiente para el producto: " + producto.getNombre());
                 }
 
-                // 2. Buscar la Caja Abierta actual
-                CajaDiaria cajaAbierta = cajaRepositorio.findByEstado("ABIERTA")
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                                                "No se puede anular: No hay una caja abierta para registrar el egreso"));
+                // Descontar stock
+                producto.setStockActual(producto.getStockActual() - detalleDto.getCantidad());
 
-                // --- VALIDACIÓN DE SALDO ---
-                // El repositorio ya devuelve BigDecimal; si no hay ventas, retorna null
-                BigDecimal ventasActuales = ventaRepositorio.sumarVentasPorCaja(cajaAbierta.getId());
-                ventasActuales = (ventasActuales == null) ? BigDecimal.ZERO : ventasActuales;
+                BigDecimal subtotal = producto.getPrecio()
+                        .multiply(BigDecimal.valueOf(detalleDto.getCantidad()));
 
-                // Comparación correcta con BigDecimal: compareTo < 0 significa "menor que"
-                if (ventasActuales.compareTo(venta.getTotal()) < 0) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                                        "No hay suficiente efectivo en caja para devolver el monto de esta venta.");
+                nuevoDetalle.setProducto(producto);
+                nuevoDetalle.setPrecioUnitario(producto.getPrecio());
+                nuevoDetalle.setSubtotal(subtotal);
+                totalVenta = totalVenta.add(subtotal);
+
+            } else {
+                // ---- RAMA SERVICIO: NO tiene stock, solo se cobra ----
+                ServicioMedico servicio = servicioMedicoRepositorio.findById(detalleDto.getServicioId())
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Servicio médico no encontrado con id: " + detalleDto.getServicioId()));
+
+                if (!servicio.getActivo()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "El servicio '" + servicio.getNombre()
+                                    + "' está inactivo y no puede venderse.");
                 }
 
-                // 3. Devolver stock
-                for (DetalleVenta detalle : venta.getDetalles()) {
-                        Producto producto = detalle.getProducto();
-                        producto.setStockActual(producto.getStockActual() + detalle.getCantidad());
-                        productoRepositorio.save(producto);
-                }
+                // Los servicios NO manejan stock → sin validación ni descuento
+                BigDecimal subtotal = servicio.getPrecio()
+                        .multiply(BigDecimal.valueOf(detalleDto.getCantidad()));
 
-                // 4. Registrar el Movimiento de Caja (EGRESO)
-                MovimientoCaja egreso = new MovimientoCaja();
-                egreso.setConcepto("Anulación de Venta ID: " + venta.getId());
-                egreso.setMonto(venta.getTotal());
-                egreso.setTipoMovimiento(TipoMovimiento.EGRESO);
-                egreso.setFechaHora(LocalDateTime.now());
-                egreso.setCajaDiaria(cajaAbierta);
+                nuevoDetalle.setServicio(servicio);
+                nuevoDetalle.setPrecioUnitario(servicio.getPrecio());
+                nuevoDetalle.setSubtotal(subtotal);
+                totalVenta = totalVenta.add(subtotal);
+            }
 
-                movimientoCajaRespositorio.save(egreso);
-
-                // 5. Cambiar el estado
-                venta.setEstado(EstadoVenta.ANULADA);
-                ventaRepositorio.save(venta);
-
-                return new MensajeResponseDTO("Venta anulada correctamente y stock devuelto");
+            venta.agregarDetalle(nuevoDetalle);
         }
 
-        // =========================
-        // MAPPER PRIVADO
-        // =========================
-        private VentaResponseDTO mapearAVentaResponseDTO(Venta venta) {
-                VentaResponseDTO respuesta = new VentaResponseDTO();
-                respuesta.setId(venta.getId());
-                respuesta.setClienteId(venta.getCliente().getId());
-                respuesta.setFechaHora(venta.getFechaHora());
-                respuesta.setTotal(venta.getTotal());
+        venta.setTotal(totalVenta);
+        venta.setEstado(EstadoVenta.ACTIVA);
 
-                List<DetalleVentaResponseDTO> detallesDTO = venta.getDetalles()
-                                .stream()
-                                .map(detalle -> new DetalleVentaResponseDTO(
-                                                detalle.getProducto().getId(),
-                                                detalle.getProducto().getNombre(),
-                                                detalle.getCantidad(),
-                                                detalle.getPrecioUnitario(),
-                                                detalle.getSubtotal()))
-                                .collect(Collectors.toList());
-                respuesta.setDetalles(detallesDTO);
+        Venta ventaGuardada = ventaRepositorio.save(venta);
+        return mapearAVentaResponseDTO(ventaGuardada);
+    }
 
-                return respuesta;
+    // =========================
+    // GET /api/ventas
+    // =========================
+    public Page<VentaResponseDTO> listarTodas(Pageable pageable) {
+        return ventaRepositorio.findAll(pageable)
+                .map(this::mapearAVentaResponseDTO);
+    }
+
+    // =========================
+    // GET /api/ventas/{id}
+    // =========================
+    public VentaResponseDTO buscarPorId(Long id) {
+        Venta venta = ventaRepositorio.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Venta no encontrada con id: " + id));
+        return mapearAVentaResponseDTO(venta);
+    }
+
+    // =========================
+    // DELETE /api/ventas/{id}/anular
+    // =========================
+    @Transactional
+    public MensajeResponseDTO anularVenta(Long idVenta) {
+
+        Venta venta = ventaRepositorio.findById(idVenta)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Venta no encontrada"));
+
+        if (venta.getEstado() == EstadoVenta.ANULADA) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La venta ya está anulada");
         }
+
+        CajaDiaria cajaAbierta = cajaRepositorio.findByEstado("ABIERTA")
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "No se puede anular: no hay caja abierta para registrar el egreso"));
+
+        BigDecimal ventasActuales = ventaRepositorio.sumarVentasPorCaja(cajaAbierta.getId());
+        ventasActuales = (ventasActuales == null) ? BigDecimal.ZERO : ventasActuales;
+
+        if (ventasActuales.compareTo(venta.getTotal()) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "No hay suficiente efectivo en caja para devolver el monto de esta venta.");
+        }
+
+        // Devolver stock SOLO de los ítems que son productos físicos
+        for (DetalleVenta detalle : venta.getDetalles()) {
+            if (detalle.getProducto() != null) {
+                Producto producto = detalle.getProducto();
+                producto.setStockActual(producto.getStockActual() + detalle.getCantidad());
+                productoRepositorio.save(producto);
+            }
+            // Los servicios no tienen stock → no hay nada que devolver
+        }
+
+        MovimientoCaja egreso = new MovimientoCaja();
+        egreso.setConcepto("Anulación de Venta ID: " + venta.getId());
+        egreso.setMonto(venta.getTotal());
+        egreso.setTipoMovimiento(TipoMovimiento.EGRESO);
+        egreso.setFechaHora(LocalDateTime.now());
+        egreso.setCajaDiaria(cajaAbierta);
+        movimientoCajaRespositorio.save(egreso);
+
+        venta.setEstado(EstadoVenta.ANULADA);
+        ventaRepositorio.save(venta);
+
+        return new MensajeResponseDTO("Venta anulada correctamente y stock devuelto");
+    }
+
+    // =========================
+    // MAPPER PRIVADO
+    // =========================
+    private VentaResponseDTO mapearAVentaResponseDTO(Venta venta) {
+        VentaResponseDTO respuesta = new VentaResponseDTO();
+        respuesta.setId(venta.getId());
+        respuesta.setClienteId(venta.getCliente().getId());
+        respuesta.setFechaHora(venta.getFechaHora());
+        respuesta.setTotal(venta.getTotal());
+
+        List<DetalleVentaResponseDTO> detallesDTO = venta.getDetalles()
+                .stream()
+                .map(detalle -> {
+                    if (detalle.getProducto() != null) {
+                        // Ítem de tipo Producto
+                        return new DetalleVentaResponseDTO(
+                                detalle.getProducto().getId(), // productoId
+                                null,                          // servicioId
+                                detalle.getProducto().getNombre(), // nombreItem
+                                detalle.getCantidad(),
+                                detalle.getPrecioUnitario(),
+                                detalle.getSubtotal());
+                    } else {
+                        // Ítem de tipo Servicio
+                        return new DetalleVentaResponseDTO(
+                                null,                              // productoId
+                                detalle.getServicio().getId(),     // servicioId
+                                detalle.getServicio().getNombre(), // nombreItem
+                                detalle.getCantidad(),
+                                detalle.getPrecioUnitario(),
+                                detalle.getSubtotal());
+                    }
+                })
+                .collect(Collectors.toList());
+
+        respuesta.setDetalles(detallesDTO);
+        return respuesta;
+    }
 }

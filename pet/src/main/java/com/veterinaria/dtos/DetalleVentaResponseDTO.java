@@ -10,8 +10,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class DetalleVentaResponseDTO {
+
+    // Uno de los dos tendrá valor; el otro será null.
     private Long productoId;
-    private String nombreProducto;
+    private Long servicioId;
+
+    // Nombre del producto O del servicio, dependiendo del tipo de ítem
+    private String nombreItem;
+
     private Integer cantidad;
     private BigDecimal precioUnitario;
     private BigDecimal subtotal;

@@ -15,23 +15,26 @@ import org.springframework.web.server.ResponseStatusException;
 import com.veterinaria.dtos.VentaRequestDTO;
 import com.veterinaria.respositorios.CajaRepositorio;
 import com.veterinaria.respositorios.ClienteRepositorio;
+import com.veterinaria.respositorios.MovimientoCajaRespositorio;
 import com.veterinaria.respositorios.ProductoRepositorio;
+import com.veterinaria.respositorios.ServicioMedicoRepositorio;
 import com.veterinaria.respositorios.VentaRepositorio;
 
 @ExtendWith(MockitoExtension.class)
 class VentaServicioTest {
 
-    // Simulamos todas las dependencias que usa una Venta
     @Mock
     private VentaRepositorio ventaRepositorio;
     @Mock
     private ClienteRepositorio clienteRepositorio;
     @Mock
     private ProductoRepositorio productoRepositorio;
-
-    // ¡NUESTRO NUEVO ACTOR!
+    @Mock
+    private ServicioMedicoRepositorio servicioMedicoRepositorio; // Nuevo repositorio inyectado
     @Mock
     private CajaRepositorio cajaRepositorio;
+    @Mock
+    private MovimientoCajaRespositorio movimientoCajaRespositorio;
 
     @InjectMocks
     private VentaServicio ventaServicio;
@@ -41,10 +44,10 @@ class VentaServicioTest {
         VentaRequestDTO request = new VentaRequestDTO();
         request.setClienteId(1L);
 
-        // Simulamos que la base de datos dice: "No hay ninguna caja ABIERTA hoy"
+        // Simulamos que no hay caja ABIERTA
         when(cajaRepositorio.findByEstado("ABIERTA")).thenReturn(Optional.empty());
 
-        // AFIRMAMOS: El sistema DEBE lanzar una excepción y detener la venta
+        // El sistema DEBE lanzar excepción si la caja está cerrada
         assertThrows(ResponseStatusException.class, () -> {
             ventaServicio.guardar(request);
         }, "Debería lanzar error porque la caja está cerrada");

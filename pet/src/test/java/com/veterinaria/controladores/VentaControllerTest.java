@@ -35,6 +35,7 @@ class VentaControllerTest {
 
     @Test
     void debeCrearVentaYRetornarEstadoCreated() throws Exception {
+        // JSON de ejemplo: una venta con un producto y un servicio médico
         String ventaJson = """
                 {
                     "clienteId": 1,
@@ -44,36 +45,48 @@ class VentaControllerTest {
                             "cantidad": 2
                         },
                         {
-                            "productoId": 3,
+                            "servicioId": 5,
                             "cantidad": 1
                         }
                     ]
                 }
                 """;
 
-        // 1. Preparamos los detalles de respuesta simulados con BigDecimal
+        // Detalle de tipo Producto: productoId tiene valor, servicioId es null
         DetalleVentaResponseDTO detalle1 = new DetalleVentaResponseDTO(
-                1L, "Shampoo", 2, new BigDecimal("20.00"), new BigDecimal("40.00"));
-        DetalleVentaResponseDTO detalle2 = new DetalleVentaResponseDTO(
-                3L, "Correa", 1, new BigDecimal("15.00"), new BigDecimal("15.00"));
+                1L,                       // productoId
+                null,                     // servicioId
+                "Shampoo Antipulgas",     // nombreItem
+                2,
+                new BigDecimal("20.00"),
+                new BigDecimal("40.00"));
 
-        // 2. Preparamos la respuesta de la venta simulada
+        // Detalle de tipo Servicio: servicioId tiene valor, productoId es null
+        DetalleVentaResponseDTO detalle2 = new DetalleVentaResponseDTO(
+                null,                     // productoId
+                5L,                       // servicioId
+                "Consulta Veterinaria",   // nombreItem
+                1,
+                new BigDecimal("35.00"),
+                new BigDecimal("35.00"));
+
         VentaResponseDTO respuestaMock = new VentaResponseDTO(
                 1L,
                 1L,
                 LocalDateTime.now(),
-                new BigDecimal("55.00"),
+                new BigDecimal("75.00"),
                 List.of(detalle1, detalle2));
 
         when(ventaServicio.guardar(any(VentaRequestDTO.class))).thenReturn(respuestaMock);
 
-        // 3. Ejecutamos y verificamos los datos
         mockMvc.perform(post("/api/ventas")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(ventaJson))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.total").value(55.00))
-                .andExpect(jsonPath("$.detalles").isArray());
+                .andExpect(jsonPath("$.total").value(75.00))
+                .andExpect(jsonPath("$.detalles").isArray())
+                .andExpect(jsonPath("$.detalles[0].nombreItem").value("Shampoo Antipulgas"))
+                .andExpect(jsonPath("$.detalles[1].nombreItem").value("Consulta Veterinaria"));
     }
 }
