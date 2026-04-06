@@ -18,20 +18,28 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-
 public class Producto {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String nombre;
     private String descripcion;
+
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal precio;
+
     private Integer stockActual;
+
+    // Stock mínimo para alertas de inventario. Valor por defecto 5 para no
+    // romper registros existentes en la base de datos.
+    @Column(nullable = false)
+    private Integer stockMinimo = 5;
+
     @Version
     private Long version;
 
     @Column(nullable = false)
     private Boolean activo = true;
-
 }

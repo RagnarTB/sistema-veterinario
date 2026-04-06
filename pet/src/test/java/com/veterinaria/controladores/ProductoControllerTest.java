@@ -2,9 +2,7 @@ package com.veterinaria.controladores;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -15,7 +13,6 @@ import com.veterinaria.servicios.ProductoServicio;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Por eso, algunas líneas de aquí abajo te marcarán error en tu IDE (letras rojas). ¡Eso es TDD!
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 class ProductoControllerTest {
@@ -28,12 +25,14 @@ class ProductoControllerTest {
 
     @Test
     void debeCrearProductoYRetornarEstadoCorrecto() throws Exception {
+        // stockMinimo es ahora un campo obligatorio en el DTO
         String productoJson = """
                 {
                     "nombre": "Shampoo Antipulgas",
                     "descripcion": "Shampoo para perros de todas las razas",
                     "precio": 45.50,
-                    "stockActual": 20
+                    "stockActual": 20,
+                    "stockMinimo": 5
                 }
                 """;
 
@@ -50,7 +49,26 @@ class ProductoControllerTest {
                     "nombre": "Shampoo Antipulgas",
                     "descripcion": "Shampoo",
                     "precio": -10.0,
-                    "stockActual": 20
+                    "stockActual": 20,
+                    "stockMinimo": 5
+                }
+                """;
+
+        mockMvc.perform(post("/api/productos")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(productoInvalidoJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void debeRetornarBadRequestCuandoStockMinimoEsNegativo() throws Exception {
+        String productoInvalidoJson = """
+                {
+                    "nombre": "Shampoo Antipulgas",
+                    "descripcion": "Shampoo",
+                    "precio": 45.50,
+                    "stockActual": 20,
+                    "stockMinimo": -1
                 }
                 """;
 

@@ -13,13 +13,18 @@ public class ProductoRequestDTO {
 
     @NotBlank(message = "El nombre del producto es obligatorio")
     private String nombre;
+
     private String descripcion;
 
     @NotNull(message = "El precio del producto es obligatorio")
     @DecimalMin(value = "0.0", inclusive = true, message = "El precio no puede ser negativo")
     private BigDecimal precio;
+
     @NotNull(message = "El stock no puede ser nulo")
     @Min(value = 0, message = "El stock no puede ser negativo")
     private Integer stockActual;
 
+    @NotNull(message = "El stock mínimo es obligatorio")
+    @Min(value = 0, message = "El stock mínimo no puede ser negativo")
+    private Integer stockMinimo;
 }
