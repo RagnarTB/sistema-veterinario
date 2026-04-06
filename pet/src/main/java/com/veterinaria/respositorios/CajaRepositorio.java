@@ -9,7 +9,9 @@ import com.veterinaria.modelos.CajaDiaria;
 @Repository
 public interface CajaRepositorio extends JpaRepository<CajaDiaria, Long> {
 
-    // ¡NUEVO! Con solo escribir este nombre, Spring Boot genera la consulta SQL
-    // automáticamente
-    Optional<CajaDiaria> findBySedeIdAndEstado(Long sedeId, String estado);
+    // Búsqueda de la caja abierta de un empleado en una sede específica
+    Optional<CajaDiaria> findByEmpleadoIdAndSedeIdAndEstado(Long empleadoId, Long sedeId, String estado);
+
+    // Búsqueda de cualquier caja abierta del empleado en cualquier sede
+    Optional<CajaDiaria> findByEmpleadoIdAndEstado(Long empleadoId, String estado);
 }

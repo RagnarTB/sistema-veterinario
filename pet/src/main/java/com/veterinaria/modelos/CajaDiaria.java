@@ -55,6 +55,9 @@ public class CajaDiaria {
     @JoinColumn(name = "sede_id")
     private Sede sede;
 
-
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
+    @ManyToOne
+    @JoinColumn(name = "empleado_id", nullable = false)
+    private Empleado empleado;
     
 }

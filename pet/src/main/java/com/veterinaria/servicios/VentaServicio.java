@@ -67,12 +67,12 @@ public class VentaServicio {
     // POST /api/ventas
     // =========================
     @Transactional
-    public VentaResponseDTO guardar(VentaRequestDTO dto) {
+    public VentaResponseDTO guardar(VentaRequestDTO dto, com.veterinaria.modelos.Empleado empleadoActual) {
 
-        // REGLA DE NEGOCIO: No se puede vender con la caja cerrada
-        CajaDiaria cajaAbierta = cajaRepositorio.findBySedeIdAndEstado(dto.getSedeId(), "ABIERTA")
+        // REGLA DE NEGOCIO: Cada empleado debe tener su propia caja abierta en la sede
+        CajaDiaria cajaAbierta = cajaRepositorio.findByEmpleadoIdAndSedeIdAndEstado(empleadoActual.getId(), dto.getSedeId(), "ABIERTA")
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "No se puede realizar la venta porque la caja de la sede está cerrada"));
+                        "No se puede realizar la venta porque no has abierto tu caja personal en esta sede"));
 
         Cliente cliente = clienteRepositorio.findById(dto.getClienteId())
                 .orElseThrow(() -> new ResponseStatusException(
@@ -193,7 +193,7 @@ public class VentaServicio {
     // DELETE /api/ventas/{id}/anular
     // =========================
     @Transactional
-    public MensajeResponseDTO anularVenta(Long idVenta) {
+    public MensajeResponseDTO anularVenta(Long idVenta, com.veterinaria.modelos.Empleado empleadoActual) {
 
         Venta venta = ventaRepositorio.findById(idVenta)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -203,9 +203,10 @@ public class VentaServicio {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La venta ya está anulada");
         }
 
-        CajaDiaria cajaAbierta = cajaRepositorio.findBySedeIdAndEstado(venta.getCaja().getSede().getId(), "ABIERTA")
+        // Para anular, el empleado actual debe tener su caja abierta para registrar la devolución (egreso)
+        CajaDiaria cajaAbierta = cajaRepositorio.findByEmpleadoIdAndSedeIdAndEstado(empleadoActual.getId(), venta.getCaja().getSede().getId(), "ABIERTA")
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "No se puede anular: no hay caja abierta en la sede para registrar el egreso"));
+                        "No se puede anular: no tienes una caja abierta en esta sede para registrar el egreso (devolución)"));
 
         BigDecimal ventasActuales = ventaRepositorio.sumarVentasPorCaja(cajaAbierta.getId());
         ventasActuales = (ventasActuales == null) ? BigDecimal.ZERO : ventasActuales;

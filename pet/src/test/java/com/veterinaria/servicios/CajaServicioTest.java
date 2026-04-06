@@ -54,10 +54,11 @@ class CajaServicioTest {
         sede.setId(1L);
 
         Empleado empleado = new Empleado();
+        empleado.setId(1L);
         empleado.setSedes(new HashSet<>(Set.of(sede)));
 
         when(sedeRepositorio.findById(1L)).thenReturn(Optional.of(sede));
-        when(cajaRepositorio.findBySedeIdAndEstado(1L, "ABIERTA"))
+        when(cajaRepositorio.findByEmpleadoIdAndEstado(1L, "ABIERTA"))
                 .thenReturn(Optional.empty());
 
         cajaServicio.abrirCaja(request, empleado);
@@ -72,6 +73,7 @@ class CajaServicioTest {
         assertEquals("ABIERTA", cajaGuardada.getEstado());
         assertNotNull(cajaGuardada.getFechaApertura());
         assertEquals(sede, cajaGuardada.getSede());
+        assertEquals(empleado, cajaGuardada.getEmpleado());
     }
 
     @Test
@@ -80,6 +82,7 @@ class CajaServicioTest {
         sede.setId(1L);
 
         Empleado empleado = new Empleado();
+        empleado.setId(1L);
         empleado.setSedes(new HashSet<>(Set.of(sede)));
 
         CajaDiaria cajaAbierta = new CajaDiaria();
@@ -88,9 +91,11 @@ class CajaServicioTest {
         cajaAbierta.setEstado("ABIERTA");
         cajaAbierta.setFechaApertura(LocalDateTime.now().minusHours(8));
         cajaAbierta.setMovimientos(new ArrayList<>());
+        cajaAbierta.setSede(sede);
+        cajaAbierta.setEmpleado(empleado);
 
         when(sedeRepositorio.findById(1L)).thenReturn(Optional.of(sede));
-        when(cajaRepositorio.findBySedeIdAndEstado(1L, "ABIERTA"))
+        when(cajaRepositorio.findByEmpleadoIdAndSedeIdAndEstado(1L, 1L, "ABIERTA"))
                 .thenReturn(Optional.of(cajaAbierta));
 
         when(ventaRepositorio.sumarVentasPorCaja(1L))

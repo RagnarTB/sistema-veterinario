@@ -44,9 +44,10 @@ public class CajaServicio {
                                         "El empleado no pertenece a la sede solicitada. No puede abrir la caja de otra sede.");
                 }
 
-                if (cajaRepositorio.findBySedeIdAndEstado(dto.getSedeId(), "ABIERTA").isPresent()) {
+                // VALIDACIÓN: un empleado solo puede tener UNA caja abierta en todo el sistema
+                if (cajaRepositorio.findByEmpleadoIdAndEstado(empleadoActual.getId(), "ABIERTA").isPresent()) {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                                        "Ya existe una caja abierta en esta sede en este momento");
+                                        "Ya tienes una caja abierta en el sistema. Debes cerrarla antes de abrir una nueva.");
                 }
 
                 CajaDiaria nuevaCaja = new CajaDiaria();
@@ -54,6 +55,7 @@ public class CajaServicio {
                 nuevaCaja.setEstado("ABIERTA");
                 nuevaCaja.setFechaApertura(LocalDateTime.now());
                 nuevaCaja.setSede(sede);
+                nuevaCaja.setEmpleado(empleadoActual); // Asignación personal
 
                 cajaRepositorio.save(nuevaCaja);
         }
@@ -69,9 +71,10 @@ public class CajaServicio {
                                         "El empleado no pertenece a la sede solicitada. No puede cerrar la caja de otra sede.");
                 }
 
-                CajaDiaria cajaAbierta = cajaRepositorio.findBySedeIdAndEstado(sedeId, "ABIERTA")
+                // Buscamos la caja abierta ESPECÍFICA de este empleado en esta sede
+                CajaDiaria cajaAbierta = cajaRepositorio.findByEmpleadoIdAndSedeIdAndEstado(empleadoActual.getId(), sedeId, "ABIERTA")
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "No hay ninguna caja abierta para cerrar"));
+                                                "No tienes ninguna caja abierta en esta sede para cerrar"));
 
                 LocalDateTime ahora = LocalDateTime.now();
                 cajaAbierta.setEstado("CERRADA");

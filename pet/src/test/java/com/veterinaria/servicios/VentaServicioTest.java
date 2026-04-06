@@ -45,12 +45,15 @@ class VentaServicioTest {
         request.setClienteId(1L);
         request.setSedeId(1L);
 
-        // Simulamos que no hay caja ABIERTA
-        when(cajaRepositorio.findBySedeIdAndEstado(1L, "ABIERTA")).thenReturn(Optional.empty());
+        com.veterinaria.modelos.Empleado empleado = new com.veterinaria.modelos.Empleado();
+        empleado.setId(1L);
+
+        // Simulamos que no hay caja ABIERTA personal para este empleado en esta sede
+        when(cajaRepositorio.findByEmpleadoIdAndSedeIdAndEstado(1L, 1L, "ABIERTA")).thenReturn(Optional.empty());
 
         // El sistema DEBE lanzar excepción si la caja está cerrada
         assertThrows(ResponseStatusException.class, () -> {
-            ventaServicio.guardar(request);
+            ventaServicio.guardar(request, empleado);
         }, "Debería lanzar error porque la caja está cerrada");
     }
 }

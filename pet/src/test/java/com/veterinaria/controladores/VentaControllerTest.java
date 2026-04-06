@@ -33,8 +33,15 @@ class VentaControllerTest {
     @MockBean
     private VentaServicio ventaServicio;
 
+    @MockBean
+    private com.veterinaria.servicios.EmpleadoAutenticadoService empleadoAutenticadoService;
+
     @Test
     void debeCrearVentaYRetornarEstadoCreated() throws Exception {
+        // Mock del empleado autenticado
+        com.veterinaria.modelos.Empleado empleadoMock = new com.veterinaria.modelos.Empleado();
+        empleadoMock.setId(1L);
+        when(empleadoAutenticadoService.obtenerEmpleadoActual()).thenReturn(empleadoMock);
         // JSON de ejemplo: una venta con un producto y un servicio médico
         // cantidad ahora acepta decimales (ej. 1.5 kg de alimento)
         String ventaJson = """
@@ -78,7 +85,7 @@ class VentaControllerTest {
                 new BigDecimal("75.00"),
                 List.of(detalle1, detalle2));
 
-        when(ventaServicio.guardar(any(VentaRequestDTO.class))).thenReturn(respuestaMock);
+        when(ventaServicio.guardar(any(VentaRequestDTO.class), any(com.veterinaria.modelos.Empleado.class))).thenReturn(respuestaMock);
 
         mockMvc.perform(post("/api/ventas")
                 .contentType(MediaType.APPLICATION_JSON)
