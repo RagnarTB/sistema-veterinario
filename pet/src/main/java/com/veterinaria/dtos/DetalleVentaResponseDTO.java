@@ -18,7 +18,7 @@ public class DetalleVentaResponseDTO {
     // Nombre del producto O del servicio, dependiendo del tipo de ítem
     private String nombreItem;
 
-    private Integer cantidad;
+    private BigDecimal cantidad;
     private BigDecimal precioUnitario;
     private BigDecimal subtotal;
 }

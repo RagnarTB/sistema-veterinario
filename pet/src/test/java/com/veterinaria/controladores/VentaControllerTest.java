@@ -36,37 +36,37 @@ class VentaControllerTest {
     @Test
     void debeCrearVentaYRetornarEstadoCreated() throws Exception {
         // JSON de ejemplo: una venta con un producto y un servicio médico
+        // cantidad ahora acepta decimales (ej. 1.5 kg de alimento)
         String ventaJson = """
                 {
                     "clienteId": 1,
                     "detalles": [
                         {
                             "productoId": 1,
-                            "cantidad": 2
+                            "cantidad": 2.0
                         },
                         {
                             "servicioId": 5,
-                            "cantidad": 1
+                            "cantidad": 1.0
                         }
                     ]
                 }
                 """;
 
-        // Detalle de tipo Producto: productoId tiene valor, servicioId es null
+        // cantidad es BigDecimal — usar new BigDecimal("2.00") en vez de literal int
         DetalleVentaResponseDTO detalle1 = new DetalleVentaResponseDTO(
-                1L,                       // productoId
-                null,                     // servicioId
-                "Shampoo Antipulgas",     // nombreItem
-                2,
+                1L,
+                null,
+                "Shampoo Antipulgas",
+                new BigDecimal("2.00"),   // cantidad BigDecimal
                 new BigDecimal("20.00"),
                 new BigDecimal("40.00"));
 
-        // Detalle de tipo Servicio: servicioId tiene valor, productoId es null
         DetalleVentaResponseDTO detalle2 = new DetalleVentaResponseDTO(
-                null,                     // productoId
-                5L,                       // servicioId
-                "Consulta Veterinaria",   // nombreItem
-                1,
+                null,
+                5L,
+                "Consulta Veterinaria",
+                new BigDecimal("1.00"),   // cantidad BigDecimal
                 new BigDecimal("35.00"),
                 new BigDecimal("35.00"));
 

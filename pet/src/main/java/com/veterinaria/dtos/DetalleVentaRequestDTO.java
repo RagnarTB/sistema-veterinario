@@ -1,6 +1,8 @@
 package com.veterinaria.dtos;
 
-import jakarta.validation.constraints.Min;
+import java.math.BigDecimal;
+
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -14,6 +16,6 @@ public class DetalleVentaRequestDTO {
     private Long servicioId;
 
     @NotNull(message = "La cantidad es obligatoria")
-    @Min(value = 1, message = "La cantidad debe ser al menos 1")
-    private Integer cantidad;
+    @DecimalMin(value = "0.01", inclusive = true, message = "La cantidad debe ser mayor a 0")
+    private BigDecimal cantidad;
 }

@@ -23,7 +23,8 @@ public class DetalleVenta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Integer cantidad;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal cantidad;
 
     @Column(precision = 19, scale = 2)
     private BigDecimal precioUnitario;

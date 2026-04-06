@@ -6,4 +6,7 @@ import com.veterinaria.modelos.Cliente;
 
 public interface ClienteRepositorio extends JpaRepository<Cliente, Long> {
     boolean existsByDni(String dni);
+
+    // Conteo de clientes activos para el dashboard
+    long countByActivoTrue();
 }

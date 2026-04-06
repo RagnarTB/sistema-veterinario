@@ -30,12 +30,13 @@ public class Producto {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal precio;
 
-    private Integer stockActual;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal stockActual;
 
-    // Stock mínimo para alertas de inventario. Valor por defecto 5 para no
+    // Stock mínimo para alertas de inventario. Valor por defecto 5.00 para no
     // romper registros existentes en la base de datos.
-    @Column(nullable = false)
-    private Integer stockMinimo = 5;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal stockMinimo = BigDecimal.valueOf(5);
 
     @Version
     private Long version;

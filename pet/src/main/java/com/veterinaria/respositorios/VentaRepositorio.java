@@ -17,10 +17,16 @@ public interface VentaRepositorio extends JpaRepository<Venta, Long> {
     @Query("SELECT SUM(v.total) FROM Venta v WHERE v.caja.id = :cajaId AND v.estado = com.veterinaria.modelos.Enums.EstadoVenta.ACTIVA")
     BigDecimal sumarVentasPorCaja(@Param("cajaId") Long cajaId);
 
-    // Le indicamos las rutas de los objetos que necesitamos extraer en el DTO
     @EntityGraph(attributePaths = { "cliente", "detalles", "detalles.producto", "detalles.servicio" })
     Page<Venta> findAll(Pageable pageable);
 
     @EntityGraph(attributePaths = { "cliente", "detalles", "detalles.producto", "detalles.servicio" })
     Optional<Venta> findById(Long id);
+
+    // Ingresos del mes: suma de ventas activas filtrando por año y mes
+    @Query("SELECT SUM(v.total) FROM Venta v " +
+            "WHERE v.estado = com.veterinaria.modelos.Enums.EstadoVenta.ACTIVA " +
+            "AND YEAR(v.fechaHora) = :anio " +
+            "AND MONTH(v.fechaHora) = :mes")
+    BigDecimal sumarVentasPorMesYAnio(@Param("anio") int anio, @Param("mes") int mes);
 }

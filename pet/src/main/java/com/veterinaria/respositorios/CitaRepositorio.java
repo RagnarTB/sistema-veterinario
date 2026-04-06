@@ -12,8 +12,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.veterinaria.dtos.CitasVeterinarioDTO;
 import com.veterinaria.modelos.Cita;
-import com.veterinaria.modelos.Enums.EstadoCita; // Importamos el Enum
+import com.veterinaria.modelos.Enums.EstadoCita;
 
 public interface CitaRepositorio extends JpaRepository<Cita, Long> {
 
@@ -42,10 +43,19 @@ public interface CitaRepositorio extends JpaRepository<Cita, Long> {
                         @Param("fecha") LocalDate fecha,
                         @Param("estadosIgnorados") List<EstadoCita> estadosIgnorados);
 
-        // Solucionando el N+1 para las Citas
         @EntityGraph(attributePaths = { "pacientes", "servicio", "veterinario" })
         Page<Cita> findAll(Pageable pageable);
 
         @EntityGraph(attributePaths = { "pacientes", "servicio", "veterinario" })
         Optional<Cita> findById(Long id);
+
+        // Rendimiento de veterinarios: conteo de citas COMPLETADAS por cada médico
+        @Query("SELECT new com.veterinaria.dtos.CitasVeterinarioDTO(u.email, COUNT(c)) " +
+                        "FROM Cita c " +
+                        "JOIN c.veterinario u " +
+                        "WHERE c.estado = com.veterinaria.modelos.Enums.EstadoCita.COMPLETADA " +
+                        "GROUP BY u.id, u.email " +
+                        "ORDER BY COUNT(c) DESC")
+        List<CitasVeterinarioDTO> contarCitasCompletadasPorVeterinario();
 }
+

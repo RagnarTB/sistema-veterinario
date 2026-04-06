@@ -114,16 +114,15 @@ public class VentaServicio {
                                     + "' está inactivo y no puede venderse.");
                 }
 
-                if (producto.getStockActual() < detalleDto.getCantidad()) {
+                if (producto.getStockActual().compareTo(detalleDto.getCantidad()) < 0) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                             "Stock insuficiente para el producto: " + producto.getNombre());
                 }
 
-                // Descontar stock
-                producto.setStockActual(producto.getStockActual() - detalleDto.getCantidad());
+                // Descontar stock con BigDecimal.subtract()
+                producto.setStockActual(producto.getStockActual().subtract(detalleDto.getCantidad()));
 
-                BigDecimal subtotal = producto.getPrecio()
-                        .multiply(BigDecimal.valueOf(detalleDto.getCantidad()));
+                BigDecimal subtotal = producto.getPrecio().multiply(detalleDto.getCantidad());
 
                 nuevoDetalle.setProducto(producto);
                 nuevoDetalle.setPrecioUnitario(producto.getPrecio());
@@ -144,8 +143,7 @@ public class VentaServicio {
                 }
 
                 // Los servicios NO manejan stock → sin validación ni descuento
-                BigDecimal subtotal = servicio.getPrecio()
-                        .multiply(BigDecimal.valueOf(detalleDto.getCantidad()));
+                BigDecimal subtotal = servicio.getPrecio().multiply(detalleDto.getCantidad());
 
                 nuevoDetalle.setServicio(servicio);
                 nuevoDetalle.setPrecioUnitario(servicio.getPrecio());
@@ -212,7 +210,8 @@ public class VentaServicio {
         for (DetalleVenta detalle : venta.getDetalles()) {
             if (detalle.getProducto() != null) {
                 Producto producto = detalle.getProducto();
-                producto.setStockActual(producto.getStockActual() + detalle.getCantidad());
+                // Devolver stock con BigDecimal.add()
+                producto.setStockActual(producto.getStockActual().add(detalle.getCantidad()));
                 productoRepositorio.save(producto);
             }
             // Los servicios no tienen stock → no hay nada que devolver
