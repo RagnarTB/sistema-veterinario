@@ -25,6 +25,9 @@ public class Jaula {
     @Column(nullable = false)
     private String estado;
 
+    @Column(nullable = false)
+    private Boolean activo = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sede_id", nullable = false)
     private Sede sede;

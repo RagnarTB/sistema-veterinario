@@ -6,6 +6,7 @@ import com.veterinaria.modelos.Jaula;
 import com.veterinaria.modelos.Sede;
 import com.veterinaria.respositorios.JaulaRepositorio;
 import com.veterinaria.respositorios.SedeRepositorio;
+import com.veterinaria.respositorios.HospitalizacionRepositorio;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class JaulaServicio {
 
     private final JaulaRepositorio jaulaRepositorio;
     private final SedeRepositorio sedeRepositorio;
+    private final HospitalizacionRepositorio hospitalizacionRepositorio;
 
     @Transactional
     public JaulaResponseDTO guardar(JaulaRequestDTO requestDTO) {
@@ -41,6 +43,12 @@ public class JaulaServicio {
         Jaula jaula = jaulaRepositorio.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Jaula no encontrada con ID: " + id));
 
+        if (jaula.getEstado().equals("OCUPADA") && requestDTO.getEstado().equals("DISPONIBLE")) {
+            if (hospitalizacionRepositorio.existsByJaulaIdAndEstado(id, "ACTIVA")) {
+                throw new IllegalStateException("No se puede liberar la jaula, tiene una hospitalización activa. Debe dar de alta al paciente.");
+            }
+        }
+
         Sede sede = sedeRepositorio.findById(requestDTO.getSedeId())
                 .orElseThrow(() -> new EntityNotFoundException("Sede no encontrada con ID: " + requestDTO.getSedeId()));
 
@@ -55,7 +63,7 @@ public class JaulaServicio {
 
     @Transactional(readOnly = true)
     public List<JaulaResponseDTO> listarTodas() {
-        return jaulaRepositorio.findAll().stream().map(this::mapearADTO).collect(Collectors.toList());
+        return jaulaRepositorio.findByActivoTrue().stream().map(this::mapearADTO).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -67,10 +75,15 @@ public class JaulaServicio {
 
     @Transactional
     public void eliminar(Long id) {
-        if (!jaulaRepositorio.existsById(id)) {
-            throw new EntityNotFoundException("Jaula no encontrada con ID: " + id);
+        Jaula jaula = jaulaRepositorio.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Jaula no encontrada con ID: " + id));
+        
+        if (hospitalizacionRepositorio.existsByJaulaIdAndEstado(id, "ACTIVA")) {
+            throw new IllegalStateException("No se puede eliminar la jaula, tiene una hospitalización activa.");
         }
-        jaulaRepositorio.deleteById(id);
+        
+        jaula.setActivo(false);
+        jaulaRepositorio.save(jaula);
     }
 
     private JaulaResponseDTO mapearADTO(Jaula jaula) {

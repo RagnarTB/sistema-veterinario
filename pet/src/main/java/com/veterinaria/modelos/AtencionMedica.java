@@ -17,6 +17,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.envers.RelationTargetAuditMode;
+import org.hibernate.annotations.CreationTimestamp;
+import java.time.LocalDateTime;
 
 @Entity
 @Data
@@ -40,6 +42,10 @@ public class AtencionMedica {
 
     @jakarta.persistence.Column(nullable = false)
     private Boolean activo = true;
+
+    @CreationTimestamp
+    @jakarta.persistence.Column(updatable = false)
+    private LocalDateTime fechaCreacion;
 
     @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
     @OneToOne

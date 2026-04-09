@@ -83,6 +83,57 @@ public class HospitalizacionServicio {
         return mapearADTO(actualizada);
     }
 
+    @Transactional
+    public HospitalizacionResponseDTO trasladarPaciente(Long hospitalizacionId, Long nuevaJaulaId) {
+        Hospitalizacion hospitalizacion = hospitalizacionRepositorio.findById(hospitalizacionId)
+                .orElseThrow(() -> new EntityNotFoundException("Hospitalización no encontrada con ID: " + hospitalizacionId));
+
+        if (!"ACTIVA".equalsIgnoreCase(hospitalizacion.getEstado())) {
+            throw new IllegalStateException("Solo puede trasladar a pacientes con hospitalización ACTIVA.");
+        }
+
+        Jaula nuevaJaula = jaulaRepositorio.findById(nuevaJaulaId)
+                .orElseThrow(() -> new EntityNotFoundException("Jaula no encontrada con ID: " + nuevaJaulaId));
+
+        if (!"DISPONIBLE".equalsIgnoreCase(nuevaJaula.getEstado())) {
+            throw new IllegalStateException("La nueva jaula solicitada no está DISPONIBLE.");
+        }
+
+        // Liberar jaula actual
+        Jaula jaulaActual = hospitalizacion.getJaula();
+        jaulaActual.setEstado("DISPONIBLE");
+        jaulaRepositorio.save(jaulaActual);
+
+        // Ocupar nueva jaula
+        nuevaJaula.setEstado("OCUPADA");
+        jaulaRepositorio.save(nuevaJaula);
+
+        // Actualizar hospitalización
+        hospitalizacion.setJaula(nuevaJaula);
+        Hospitalizacion actualizada = hospitalizacionRepositorio.save(hospitalizacion);
+        return mapearADTO(actualizada);
+    }
+
+    @Transactional
+    public HospitalizacionResponseDTO registrarFallecimiento(Long hospitalizacionId) {
+        Hospitalizacion hospitalizacion = hospitalizacionRepositorio.findById(hospitalizacionId)
+                .orElseThrow(() -> new EntityNotFoundException("Hospitalización no encontrada con ID: " + hospitalizacionId));
+
+        if (!"ACTIVA".equalsIgnoreCase(hospitalizacion.getEstado())) {
+            throw new IllegalStateException("La hospitalización no está ACTIVA.");
+        }
+
+        hospitalizacion.setFechaAlta(LocalDateTime.now());
+        hospitalizacion.setEstado("FALLECIDO");
+
+        Jaula jaula = hospitalizacion.getJaula();
+        jaula.setEstado("DISPONIBLE");
+        jaulaRepositorio.save(jaula);
+
+        Hospitalizacion actualizada = hospitalizacionRepositorio.save(hospitalizacion);
+        return mapearADTO(actualizada);
+    }
+
     private HospitalizacionResponseDTO mapearADTO(Hospitalizacion hospitalizacion) {
         HospitalizacionResponseDTO dto = new HospitalizacionResponseDTO();
         dto.setId(hospitalizacion.getId());

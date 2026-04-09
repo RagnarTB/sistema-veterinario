@@ -83,6 +83,7 @@ public class VentaServicio {
         venta.setCliente(cliente);
         venta.setFechaHora(LocalDateTime.now());
         venta.setCaja(cajaAbierta);
+        venta.setMetodoPago(dto.getMetodoPago());
 
         BigDecimal totalVenta = BigDecimal.ZERO;
 
@@ -202,18 +203,24 @@ public class VentaServicio {
         if (venta.getEstado() == EstadoVenta.ANULADA) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La venta ya está anulada");
         }
+        
+        if (venta.getCaja() != null && "CERRADA".equals(venta.getCaja().getEstado())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se puede anular la venta porque la caja original en la que se operó ya está CERRADA.");
+        }
 
         // Para anular, el empleado actual debe tener su caja abierta para registrar la devolución (egreso)
         CajaDiaria cajaAbierta = cajaRepositorio.findByEmpleadoIdAndSedeIdAndEstado(empleadoActual.getId(), venta.getCaja().getSede().getId(), "ABIERTA")
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "No se puede anular: no tienes una caja abierta en esta sede para registrar el egreso (devolución)"));
 
-        BigDecimal ventasActuales = ventaRepositorio.sumarVentasPorCaja(cajaAbierta.getId());
-        ventasActuales = (ventasActuales == null) ? BigDecimal.ZERO : ventasActuales;
+        if (venta.getMetodoPago() == com.veterinaria.modelos.Enums.MetodoPago.EFECTIVO) {
+            BigDecimal ventasActuales = ventaRepositorio.sumarVentasPorCaja(cajaAbierta.getId());
+            ventasActuales = (ventasActuales == null) ? BigDecimal.ZERO : ventasActuales;
 
-        if (ventasActuales.compareTo(venta.getTotal()) < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "No hay suficiente efectivo en caja para devolver el monto de esta venta.");
+            if (ventasActuales.compareTo(venta.getTotal()) < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "No hay suficiente efectivo en caja para devolver el monto de esta venta.");
+            }
         }
 
         // Devolver stock SOLO de los ítems que son productos físicos
@@ -235,6 +242,7 @@ public class VentaServicio {
         egreso.setTipoMovimiento(TipoMovimiento.EGRESO);
         egreso.setFechaHora(LocalDateTime.now());
         egreso.setCajaDiaria(cajaAbierta);
+        egreso.setMetodoPago(venta.getMetodoPago());
         movimientoCajaRespositorio.save(egreso);
 
         venta.setEstado(EstadoVenta.ANULADA);
@@ -252,6 +260,7 @@ public class VentaServicio {
         respuesta.setClienteId(venta.getCliente().getId());
         respuesta.setFechaHora(venta.getFechaHora());
         respuesta.setTotal(venta.getTotal());
+        respuesta.setMetodoPago(venta.getMetodoPago());
 
         List<DetalleVentaResponseDTO> detallesDTO = venta.getDetalles()
                 .stream()

@@ -219,7 +219,8 @@ public class CitaServicio {
                                                         + ". Estado actual: " + citaDb.getEstado());
                 }
 
-                citaRepositorio.delete(citaDb);
+                citaDb.setEstado(EstadoCita.CANCELADA);
+                citaRepositorio.save(citaDb);
         }
 
         private CitaResponseDTO mapearAResponse(Cita cita) {
