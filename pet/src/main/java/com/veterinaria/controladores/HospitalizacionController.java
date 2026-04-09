@@ -30,4 +30,20 @@ public class HospitalizacionController {
         HospitalizacionResponseDTO response = hospitalizacionServicio.darDeAlta(id);
         return ResponseEntity.ok(response);
     }
+
+    @PutMapping("/{id}/traslado")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VETERINARIO')")
+    public ResponseEntity<HospitalizacionResponseDTO> trasladarPaciente(
+            @PathVariable Long id, 
+            @Valid @RequestBody com.veterinaria.dtos.TrasladoHospitalizacionDTO requestDTO) {
+        HospitalizacionResponseDTO response = hospitalizacionServicio.trasladarPaciente(id, requestDTO.getNuevaJaulaId());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/fallecimiento")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VETERINARIO')")
+    public ResponseEntity<HospitalizacionResponseDTO> registrarFallecimiento(@PathVariable Long id) {
+        HospitalizacionResponseDTO response = hospitalizacionServicio.registrarFallecimiento(id);
+        return ResponseEntity.ok(response);
+    }
 }

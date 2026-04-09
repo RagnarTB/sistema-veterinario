@@ -36,4 +36,7 @@ public class MovimientoCaja {
     @ManyToOne
     @JoinColumn(name = "caja_diaria_id", nullable = false)
     private CajaDiaria cajaDiaria;
+
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    private com.veterinaria.modelos.Enums.MetodoPago metodoPago;
 }

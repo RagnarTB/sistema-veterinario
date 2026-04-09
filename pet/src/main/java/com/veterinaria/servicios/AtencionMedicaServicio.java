@@ -86,8 +86,12 @@ public class AtencionMedicaServicio {
         atencionMedica.setTratamiento(dto.getTratamiento());
 
         // REGLA DE NEGOCIO: La cita ya fue atendida, cambia su estado
-        cita.setEstado(EstadoCita.COMPLETADA);
-        citaRepositorio.save(cita);
+        // SOLO si todos los pacientes de la cita fueron atendidos
+        int atencionesPrevias = atencionMedicaRepositorio.countByCitaId(cita.getId());
+        if (atencionesPrevias + 1 == cita.getPacientes().size()) {
+            cita.setEstado(EstadoCita.COMPLETADA);
+            citaRepositorio.save(cita);
+        }
 
         AtencionMedica atencionGuardada = atencionMedicaRepositorio.save(atencionMedica);
 
@@ -113,6 +117,12 @@ public class AtencionMedicaServicio {
         AtencionMedica atencionDb = atencionMedicaRepositorio.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Atención médica no encontrada con ID: " + id));
+
+        if (atencionDb.getFechaCreacion() != null &&
+            java.time.temporal.ChronoUnit.HOURS.between(atencionDb.getFechaCreacion(), java.time.LocalDateTime.now()) > 24) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "No se puede modificar una historia clínica pasadas las 24 horas de su creación por motivos legales.");
+        }
 
         // Actualizamos solo los datos médicos (generalmente la Cita ID no cambia una
         // vez atendida)

@@ -15,5 +15,6 @@ public class VentaResponseDTO {
     private Long clienteId;
     private LocalDateTime fechaHora;
     private BigDecimal total;
+    private com.veterinaria.modelos.Enums.MetodoPago metodoPago;
     private List<DetalleVentaResponseDTO> detalles;
 }

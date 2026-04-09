@@ -59,6 +59,9 @@ public class Venta {
     @JoinColumn(name = "caja_id")
     private CajaDiaria caja;
 
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    private com.veterinaria.modelos.Enums.MetodoPago metodoPago;
+
     // Método de conveniencia para mantener sincronizada la relación bidireccional
     public void agregarDetalle(DetalleVenta detalle) {
         detalles.add(detalle);

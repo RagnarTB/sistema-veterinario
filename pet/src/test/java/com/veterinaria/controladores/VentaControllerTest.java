@@ -48,6 +48,7 @@ class VentaControllerTest {
                 {
                     "clienteId": 1,
                     "sedeId": 1,
+                    "metodoPago": "EFECTIVO",
                     "detalles": [
                         {
                             "productoId": 1,
@@ -83,6 +84,7 @@ class VentaControllerTest {
                 1L,
                 LocalDateTime.now(),
                 new BigDecimal("75.00"),
+                com.veterinaria.modelos.Enums.MetodoPago.EFECTIVO,
                 List.of(detalle1, detalle2));
 
         when(ventaServicio.guardar(any(VentaRequestDTO.class), any(com.veterinaria.modelos.Empleado.class))).thenReturn(respuestaMock);

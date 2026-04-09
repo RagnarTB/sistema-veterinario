@@ -20,6 +20,9 @@ public class VentaRequestDTO {
     @Positive(message = "El ID de sede debe ser positivo")
     private Long sedeId;
 
+    @NotNull(message = "El método de pago es obligatorio")
+    private com.veterinaria.modelos.Enums.MetodoPago metodoPago;
+
     @NotEmpty(message = "La venta debe tener al menos un detalle")
     @Valid
     private List<DetalleVentaRequestDTO> detalles;
