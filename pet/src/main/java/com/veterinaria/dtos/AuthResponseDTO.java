@@ -1,5 +1,7 @@
 package com.veterinaria.dtos;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,9 +10,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AuthResponseDTO {
-    private String token; // Aquí irá el choricito de texto JWT
+    private String token;
     private String refreshToken;
     private String email;
-    // Más adelante devolveremos el ROL aquí también para que Angular sepa qué menús
-    // mostrar
+    private List<String> roles; // ROLE_ADMIN, ROLE_VETERINARIO, etc.
 }

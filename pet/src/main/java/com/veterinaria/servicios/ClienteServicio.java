@@ -16,9 +16,15 @@ import jakarta.transaction.Transactional;
 public class ClienteServicio {
 
     private ClienteRepositorio clienteRepositorio;
+    private com.veterinaria.respositorios.VerificationTokenRepositorio tokenRepositorio;
+    private EmailServicio emailServicio;
 
-    public ClienteServicio(ClienteRepositorio clienteRepositorio) {
+    public ClienteServicio(ClienteRepositorio clienteRepositorio, 
+                           com.veterinaria.respositorios.VerificationTokenRepositorio tokenRepositorio, 
+                           EmailServicio emailServicio) {
         this.clienteRepositorio = clienteRepositorio;
+        this.tokenRepositorio = tokenRepositorio;
+        this.emailServicio = emailServicio;
     }
 
     public ClienteResponseDTO guardar(ClienteRequestDTO dto) {
@@ -34,11 +40,23 @@ public class ClienteServicio {
         cliente.setDni(dto.getDni());
         cliente.setEmail(dto.getEmail());
 
-        // Como este cliente lo está creando la recepcionista directamente, no tiene
-        // usuario web
-        cliente.setEsInvitado(true);
+        // El cliente se crea inactivo hasta que verifique su correo
+        cliente.setActivo(false);
+        cliente.setEsInvitado(false);
 
         Cliente clienteGuardado = clienteRepositorio.save(cliente);
+
+        // Generar Token de Verificacion
+        String token = java.util.UUID.randomUUID().toString();
+        com.veterinaria.modelos.VerificationToken verificationToken = new com.veterinaria.modelos.VerificationToken(
+                token, 
+                clienteGuardado, 
+                java.time.LocalDateTime.now().plusDays(1)
+        );
+        tokenRepositorio.save(verificationToken);
+
+        // Enviar Email
+        emailServicio.enviarCorreoConfirmacion(clienteGuardado.getEmail(), token);
 
         ClienteResponseDTO respuesta = new ClienteResponseDTO();
         respuesta.setId(clienteGuardado.getId());
@@ -47,9 +65,12 @@ public class ClienteServicio {
         respuesta.setTelefono(clienteGuardado.getTelefono());
         respuesta.setDni(clienteGuardado.getDni());
         respuesta.setEmail(clienteGuardado.getEmail());
+        respuesta.setActivo(clienteGuardado.getActivo());
+
+        respuesta.setActivo(clienteGuardado.getActivo());
+        respuesta.setVerificado(false); // First time creation is never verified
 
         return respuesta;
-
     }
 
     public Page<ClienteResponseDTO> listarTodos(String buscar, Pageable pageable) {
@@ -61,23 +82,34 @@ public class ClienteServicio {
             pagina = clienteRepositorio.findAll(pageable);
         }
 
-        return pagina.map(cliente -> new ClienteResponseDTO(
+        return pagina.map(cliente -> {
+            boolean verificado = cliente.getUsuario() != null && cliente.getUsuario().getPassword() != null;
+            return new ClienteResponseDTO(
                 cliente.getId(),
                 cliente.getNombre(),
                 cliente.getApellido(),
                 cliente.getTelefono(),
                 cliente.getDni(),
-                cliente.getEmail()));
+                cliente.getEmail(),
+                cliente.getActivo(),
+                verificado);
+        });
     }
 
     public ClienteResponseDTO buscarPorId(Long id) {
         return clienteRepositorio.findById(id)
-                .map(cliente -> new ClienteResponseDTO(
+                .map(cliente -> {
+                    boolean verificado = cliente.getUsuario() != null && cliente.getUsuario().getPassword() != null;
+                    return new ClienteResponseDTO(
                         cliente.getId(),
                         cliente.getNombre(),
                         cliente.getApellido(),
                         cliente.getTelefono(),
-                        cliente.getDni(), cliente.getEmail()))
+                        cliente.getDni(), 
+                        cliente.getEmail(), 
+                        cliente.getActivo(),
+                        verificado);
+                })
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Cliente no encontrado con ID: " + id));
 
@@ -95,14 +127,16 @@ public class ClienteServicio {
 
         Cliente clienteGuardado = clienteRepositorio.save(clientedb);
 
+        boolean verificado = clienteGuardado.getUsuario() != null && clienteGuardado.getUsuario().getPassword() != null;
         return new ClienteResponseDTO(
                 clienteGuardado.getId(),
                 clienteGuardado.getNombre(),
                 clienteGuardado.getApellido(),
                 clienteGuardado.getTelefono(),
                 clienteGuardado.getDni(),
-                clienteGuardado.getEmail()
-
+                clienteGuardado.getEmail(),
+                clienteGuardado.getActivo(),
+                verificado
         );
     }
 
@@ -110,10 +144,33 @@ public class ClienteServicio {
     public void cambiarEstado(Long id, Boolean estado) {
         Cliente clientedb = clienteRepositorio.findById(id).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente no encontrado con ID:" + id));
-        clientedb.setActivo(estado);
+
+        if (estado) {
+            // El admin acaba de darle click a "Activar". Se le envía el correo de confirmación
+            // y permanece inactivo hasta que responda al correo configurando su clave.
+            clientedb.setActivo(false); 
+            if (clientedb.getUsuario() != null) {
+                clientedb.getUsuario().setActivo(false);
+            }
+            // Generar nuevo token y reenviar
+            String token = java.util.UUID.randomUUID().toString();
+            com.veterinaria.modelos.VerificationToken verificationToken = new com.veterinaria.modelos.VerificationToken(
+                    token, 
+                    clientedb, 
+                    java.time.LocalDateTime.now().plusDays(1)
+            );
+            tokenRepositorio.save(verificationToken);
+            emailServicio.enviarCorreoConfirmacion(clientedb.getEmail(), token);
+        } else {
+            // Desactivar inmediatamente
+            clientedb.setActivo(false);
+            if (clientedb.getUsuario() != null) {
+                clientedb.getUsuario().setActivo(false);
+            }
+        }
 
         if (clientedb.getPacientes() != null) {
-            clientedb.getPacientes().forEach(paciente -> paciente.setActivo(estado));
+            clientedb.getPacientes().forEach(paciente -> paciente.setActivo(estado != null ? estado : false));
         }
         clienteRepositorio.save(clientedb);
     }

@@ -40,7 +40,7 @@ class EspecieControllerTest {
                 """;
 
         // 1. Le decimos al simulador del servicio que devuelva un objeto con ID = 1
-        EspecieResponseDTO respuestaMock = new EspecieResponseDTO(1L, "Canino");
+        EspecieResponseDTO respuestaMock = new EspecieResponseDTO(1L, "Canino", true);
         when(especieServicio.guardar(any(EspecieRequestDTO.class))).thenReturn(respuestaMock);
 
         // 2. Ejecutamos la petición y verificamos TODO

@@ -17,5 +17,6 @@ public class PacienteResponseDTO {
     private String raza;
     private LocalDate fechaNacimiento;
     private Long clienteId;
-
+    private String clienteNombre;
+    private Boolean activo;
 }

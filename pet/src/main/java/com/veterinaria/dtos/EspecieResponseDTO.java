@@ -10,4 +10,5 @@ import lombok.NoArgsConstructor;
 public class EspecieResponseDTO {
     private Long id;
     private String nombre;
+    private Boolean activo;
 }

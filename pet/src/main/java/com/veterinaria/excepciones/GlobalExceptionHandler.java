@@ -115,14 +115,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
 
-    // 9. El atrapa-todo para evitar que el usuario vea errores feos del servidor
-    // (Error 500)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> manejarErroresInesperados(Exception ex) {
+        ex.printStackTrace(); // Log the actual error to console
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Error Interno del Servidor",
-                "Ha ocurrido un error inesperado. Contacte a soporte técnico.",
+                ex.toString() + " : " + ex.getMessage(),
                 null
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);

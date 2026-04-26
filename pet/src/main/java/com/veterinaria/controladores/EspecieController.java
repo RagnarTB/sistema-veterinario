@@ -58,4 +58,12 @@ public class EspecieController {
         especieServicio.cambiarEstado(id);
         return ResponseEntity.noContent().build(); // HTTP 204: Petición procesada con éxito, sin contenido que devolver
     }
+
+    // Borrado Físico Definitivo
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> eliminarEspecie(@PathVariable Long id) {
+        especieServicio.eliminarFisicamente(id);
+        return ResponseEntity.noContent().build();
+    }
 }

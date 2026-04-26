@@ -32,12 +32,14 @@ public class AuthServicio {
     private final AuthenticationManager authenticationManager;
     private final JwtServicio jwtServicio;
     private final org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
+    private final com.veterinaria.respositorios.VerificationTokenRepositorio tokenRepositorio;
 
     public AuthServicio(UsuarioRepositorio usuarioRepositorio, RolRespositorio rolRespositorio,
             ClienteRepositorio clienteRepositorio, PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager, JwtServicio jwtServicio,
             org.springframework.security.core.userdetails.UserDetailsService userDetailsService,
-            RefreshTokenServicio refreshTokenServicio) {
+            RefreshTokenServicio refreshTokenServicio,
+            com.veterinaria.respositorios.VerificationTokenRepositorio tokenRepositorio) {
         this.usuarioRepositorio = usuarioRepositorio;
         this.rolRespositorio = rolRespositorio;
         this.clienteRepositorio = clienteRepositorio;
@@ -46,6 +48,7 @@ public class AuthServicio {
         this.jwtServicio = jwtServicio;
         this.userDetailsService = userDetailsService;
         this.refreshTokenServicio = refreshTokenServicio;
+        this.tokenRepositorio = tokenRepositorio;
     }
 
     @Transactional // AQUI: Fundamental porque guardamos en 2 tablas
@@ -88,7 +91,6 @@ public class AuthServicio {
 
     public AuthResponseDTO login(LoginRequestDTO dto) {
         // 1. El Manager verifica si el email y la contraseña son correctos
-        // Si la contraseña está mal, esto lanza un error 403 automáticamente
         authenticationManager.authenticate(
                 new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
                         dto.getEmail(), dto.getPassword()));
@@ -97,16 +99,23 @@ public class AuthServicio {
         org.springframework.security.core.userdetails.UserDetails userDetails = userDetailsService
                 .loadUserByUsername(dto.getEmail());
 
-        // 3. Generamos el Token JWT criptográfico
-        String token = jwtServicio.generarToken(userDetails);
+        // 3. Embebemos los roles como claim en el JWT para que el frontend los lea
+        java.util.List<String> roles = userDetails.getAuthorities().stream()
+                .map(auth -> auth.getAuthority())
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+        extraClaims.put("roles", roles);
+
+        String token = jwtServicio.generarToken(extraClaims, userDetails);
 
         Usuario usuario = usuarioRepositorio.findByEmail(dto.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no válido"));
 
         String refreshToken = refreshTokenServicio.crearRefreshTokenParaUsuario(usuario);
 
-        // 4. Devolvemos la llave al Frontend
-        return new AuthResponseDTO(token, refreshToken, dto.getEmail());
+        // 4. Devolvemos la llave al Frontend (incluimos roles para que el sidebar los use)
+        return new AuthResponseDTO(token, refreshToken, dto.getEmail(), roles);
     }
 
     @Transactional
@@ -142,8 +151,15 @@ public class AuthServicio {
         org.springframework.security.core.userdetails.UserDetails userDetails = userDetailsService
                 .loadUserByUsername(usuario.getEmail());
 
-        String token = jwtServicio.generarToken(userDetails);
-        return new AuthResponseDTO(token, refreshTokenNuevo, usuario.getEmail());
+        java.util.List<String> roles = userDetails.getAuthorities().stream()
+                .map(auth -> auth.getAuthority())
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+        extraClaims.put("roles", roles);
+
+        String token = jwtServicio.generarToken(extraClaims, userDetails);
+        return new AuthResponseDTO(token, refreshTokenNuevo, usuario.getEmail(), roles);
     }
 
     @Transactional
@@ -152,4 +168,33 @@ public class AuthServicio {
         return new MensajeResponseDTO("Sesión cerrada correctamente");
     }
 
+    @Transactional
+    public MensajeResponseDTO confirmarToken(String tokenStr, String password) {
+        com.veterinaria.modelos.VerificationToken token = tokenRepositorio.findByToken(tokenStr)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token inválido o no existe"));
+
+        if (token.getFechaExpiracion().isBefore(java.time.LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El enlace de verificación ha expirado");
+        }
+
+        Cliente cliente = token.getCliente();
+
+        Rol rolCliente = rolRespositorio.findByNombre("ROLE_CLIENTE")
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "El rol ROLE_CLIENTE no existe en la BD"));
+
+        Usuario usuario = new Usuario();
+        usuario.setEmail(cliente.getEmail());
+        usuario.setPassword(passwordEncoder.encode(password));
+        usuario.getRoles().add(rolCliente);
+        usuario.setActivo(true);
+        usuarioRepositorio.save(usuario);
+
+        cliente.setUsuario(usuario);
+        cliente.setActivo(true);
+        clienteRepositorio.save(cliente);
+
+        tokenRepositorio.delete(token);
+
+        return new MensajeResponseDTO("Cuenta confirmada. Ya puedes iniciar sesión.");
+    }
 }

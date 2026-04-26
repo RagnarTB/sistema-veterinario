@@ -10,4 +10,5 @@ public interface PacienteRepositorio extends JpaRepository<Paciente, Long> {
 
     Page<Paciente> findByNombreContainingIgnoreCase(String nombre, Pageable pageable);
 
+    boolean existsByEspecie_Id(Long especieId);
 }

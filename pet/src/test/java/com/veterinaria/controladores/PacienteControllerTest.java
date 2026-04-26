@@ -81,7 +81,9 @@ class PacienteControllerTest {
                                 "Perro",
                                 "Mestizo",
                                 LocalDate.of(2020, 1, 15),
-                                1L);
+                                1L,
+                                "Juan",
+                                true);
                 Page<PacienteResponseDTO> paginaMock = new PageImpl<>(List.of(pacienteMock));
 
                 when(pacienteServicio.listarTodos(any(), any())).thenReturn(paginaMock);

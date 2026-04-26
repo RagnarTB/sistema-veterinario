@@ -111,6 +111,8 @@ public class PacienteServicio {
                                 paciente.getEspecie().getNombre(), // Extraemos el nombre de la especie
                                 paciente.getRaza(),
                                 paciente.getFechaNacimiento(),
-                                paciente.getCliente().getId());
+                                paciente.getCliente().getId(),
+                                paciente.getCliente().getNombre() + " " + paciente.getCliente().getApellido(),
+                                paciente.getActivo());
         }
 }
