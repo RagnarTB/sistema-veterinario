@@ -65,12 +65,15 @@ export interface MensajeResponse {
 export interface SedeRequest {
   nombre: string;
   direccion: string;
+  telefono: string;
 }
 
 export interface SedeResponse {
   id: number;
   nombre: string;
   direccion: string;
+  telefono: string;
+  activo: boolean;
 }
 
 // =============================================
@@ -136,11 +139,23 @@ export interface PacienteResponse {
 }
 
 // =============================================
+// ROL
+// =============================================
+export interface RolRequest {
+  nombre: string;
+}
+
+export interface RolResponse {
+  id: number;
+  nombre: string;
+  activo: boolean;
+}
+
+// =============================================
 // EMPLEADO
 // =============================================
 export interface EmpleadoRequest {
   email: string;
-  password: string;
   roles: string[];
   nombre: string;
   apellido: string;
@@ -153,16 +168,18 @@ export interface EmpleadoRequest {
 
 export interface EmpleadoResponse {
   id: number;
+  usuarioId: number;
+  email: string;
+  nombresRoles: string[];
   nombre: string;
   apellido: string;
   dni: string;
   telefono: string;
   especialidad?: string;
   sueldoBase?: number;
-  email: string;
-  roles: string[];
-  sedes: SedeResponse[];
   activo: boolean;
+  sedeIds: number[];
+  sedeNombres: string[];
 }
 
 // =============================================

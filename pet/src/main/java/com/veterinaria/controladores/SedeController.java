@@ -49,4 +49,10 @@ public class SedeController {
     public void cambiarEstado(@PathVariable Long id, @RequestParam Boolean estado) {
         sedeServicio.cambiarEstado(id, estado);
     }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminar(@PathVariable Long id) {
+        sedeServicio.eliminar(id);
+    }
 }

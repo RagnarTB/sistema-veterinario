@@ -20,6 +20,9 @@ public interface EmpleadoRepositorio extends JpaRepository<Empleado, Long> {
     // Método para evitar que el mismo usuario se asigne a más de un empleado
     boolean existsByUsuarioId(Long usuarioId);
 
+    // Verificar si hay empleados asignados a una sede
+    boolean existsBySedes_Id(Long sedeId);
+
     // Búsqueda unificada para la barra de búsqueda de empleados
     Page<Empleado> findByNombreContainingIgnoreCaseOrApellidoContainingIgnoreCaseOrDniContaining(
             String nombre, String apellido, String dni, Pageable pageable);

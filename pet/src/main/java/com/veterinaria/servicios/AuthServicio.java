@@ -177,21 +177,43 @@ public class AuthServicio {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El enlace de verificación ha expirado");
         }
 
-        Cliente cliente = token.getCliente();
+        if (token.getCliente() != null) {
+            Cliente cliente = token.getCliente();
 
-        Rol rolCliente = rolRespositorio.findByNombre("ROLE_CLIENTE")
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "El rol ROLE_CLIENTE no existe en la BD"));
+            Usuario usuario = cliente.getUsuario();
+            if (usuario == null) {
+                usuario = new Usuario();
+                usuario.setEmail(cliente.getEmail());
+                Rol rolCliente = rolRespositorio.findByNombre("ROLE_CLIENTE")
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "El rol ROLE_CLIENTE no existe en la BD"));
+                usuario.getRoles().add(rolCliente);
+            }
+            
+            usuario.setPassword(passwordEncoder.encode(password));
+            usuario.setActivo(true);
+            usuarioRepositorio.save(usuario);
 
-        Usuario usuario = new Usuario();
-        usuario.setEmail(cliente.getEmail());
-        usuario.setPassword(passwordEncoder.encode(password));
-        usuario.getRoles().add(rolCliente);
-        usuario.setActivo(true);
-        usuarioRepositorio.save(usuario);
+            cliente.setUsuario(usuario);
+            cliente.setActivo(true);
+            clienteRepositorio.save(cliente);
+        } else if (token.getEmpleado() != null) {
+            com.veterinaria.modelos.Empleado empleado = token.getEmpleado();
+            Usuario usuario = empleado.getUsuario();
+            if (usuario == null) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "El empleado no tiene un usuario asignado");
+            }
+            usuario.setPassword(passwordEncoder.encode(password));
+            usuario.setActivo(true);
+            usuarioRepositorio.save(usuario);
 
-        cliente.setUsuario(usuario);
-        cliente.setActivo(true);
-        clienteRepositorio.save(cliente);
+            empleado.setActivo(true);
+            // El repositorio de empleado no está inyectado aquí, pero Cascade o guardar al usuario no guarda al empleado.
+            // Para simplicidad, podemos usar un flush o confiar en que EmpleadoServicio lo maneje.
+            // Afortunadamente, tenemos el objeto. Pero AuthServicio no tiene empleadoRepositorio.
+            // Opcion 1: Inyectar EmpleadoRepositorio en AuthServicio.
+            // Opcion 2: Solo modificar y confiar en el Transactional para que hibernate lo guarde.
+            // Al estar en @Transactional, los cambios a entidades administradas se guardarán al hacer commit!
+        }
 
         tokenRepositorio.delete(token);
 

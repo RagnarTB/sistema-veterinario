@@ -16,10 +16,7 @@ public class EmpleadoRequestDTO {
     @NotBlank(message = "El email es obligatorio")
     @Email(message = "Formato de email inválido")
     private String email;
-
-    @NotBlank(message = "La contraseña es obligatoria")
-    @Size(min = 8, max = 20, message = "La contraseña debe tener entre 8 y 20 caracteres")
-    private String password;
+    // Eliminado el password ya que se creará por correo electrónico
 
     @NotEmpty(message = "Debe asignar al menos un rol al empleado")
     private Set<String> roles;

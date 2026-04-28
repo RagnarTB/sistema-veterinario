@@ -35,10 +35,10 @@ public class PetApplication {
 		return args -> {
 			// 1. Inicializar Roles
 			if (rolRepositorio.count() == 0) {
-				rolRepositorio.save(new Rol(null, "ROLE_ADMIN"));
-				rolRepositorio.save(new Rol(null, "ROLE_CLIENTE"));
-				rolRepositorio.save(new Rol(null, "ROLE_RECEPCIONISTA"));
-				rolRepositorio.save(new Rol(null, "ROLE_VETERINARIO"));
+				rolRepositorio.save(new Rol(null, "ROLE_ADMIN", true));
+				rolRepositorio.save(new Rol(null, "ROLE_CLIENTE", true));
+				rolRepositorio.save(new Rol(null, "ROLE_RECEPCIONISTA", true));
+				rolRepositorio.save(new Rol(null, "ROLE_VETERINARIO", true));
 				System.out.println("✅ Roles inicializados");
 			}
 

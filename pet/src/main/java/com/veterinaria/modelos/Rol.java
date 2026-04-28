@@ -24,4 +24,6 @@ public class Rol {
     // Spring Security EXIGE que los roles empiecen con "ROLE_"
     private String nombre;
 
+    private Boolean activo = true;
+
 }

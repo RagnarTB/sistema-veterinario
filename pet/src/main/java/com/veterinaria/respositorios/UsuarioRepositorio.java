@@ -10,4 +10,6 @@ public interface UsuarioRepositorio extends JpaRepository<Usuario, Long> {
 
     Optional<Usuario> findByEmail(String email);
 
+    boolean existsByRoles_Id(Long rolId);
+
 }

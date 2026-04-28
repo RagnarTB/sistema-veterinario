@@ -17,6 +17,7 @@ const TOKEN_KEY   = 'vet_token';
 const REFRESH_KEY = 'vet_refresh_token';
 const EMAIL_KEY   = 'vet_email';
 const ROLES_KEY   = 'vet_roles';   // <-- guardamos roles directamente
+const ACTIVE_ROLE_KEY = 'vet_active_role'; // <-- rol con el que se ingresó
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -26,10 +27,12 @@ export class AuthService {
   private _token  = signal<string | null>(localStorage.getItem(TOKEN_KEY));
   private _email  = signal<string | null>(localStorage.getItem(EMAIL_KEY));
   private _roles  = signal<RolNombre[]>(this.loadRolesFromStorage());
+  private _activeRole = signal<RolNombre | null>(localStorage.getItem(ACTIVE_ROLE_KEY) as RolNombre | null);
 
   readonly isAuthenticated = computed(() => !!this._token());
   readonly currentEmail    = computed(() => this._email());
   readonly currentRoles    = computed(() => this._roles());
+  readonly activeRole      = computed(() => this._activeRole());
 
   constructor(private http: HttpClient, private router: Router) {}
 
@@ -73,7 +76,7 @@ export class AuthService {
   // ── Helpers de roles ────────────────────────────────────────────────
 
   hasRole(rol: RolNombre): boolean {
-    return this._roles().includes(rol);
+    return this._activeRole() === rol || this._roles().includes(rol);
   }
 
   hasAnyRole(...roles: RolNombre[]): boolean {
@@ -81,7 +84,12 @@ export class AuthService {
   }
 
   isAdmin(): boolean {
-    return this.hasRole('ROLE_ADMIN');
+    return this._activeRole() === 'ROLE_ADMIN' || this._roles().includes('ROLE_ADMIN');
+  }
+
+  setActiveRole(rol: RolNombre): void {
+    localStorage.setItem(ACTIVE_ROLE_KEY, rol);
+    this._activeRole.set(rol);
   }
 
   // ── Helpers internos ────────────────────────────────────────────────
@@ -103,6 +111,14 @@ export class AuthService {
     this._token.set(res.token);
     this._email.set(res.email);
     this._roles.set(roles);
+
+    if (roles.length === 1) {
+      this.setActiveRole(roles[0]);
+    } else {
+      // Si hay más de 1 rol, no seteamos active role automáticamente, el login screen lo pedirá.
+      localStorage.removeItem(ACTIVE_ROLE_KEY);
+      this._activeRole.set(null);
+    }
   }
 
   private limpiarSesion(): void {
@@ -110,9 +126,11 @@ export class AuthService {
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(EMAIL_KEY);
     localStorage.removeItem(ROLES_KEY);
+    localStorage.removeItem(ACTIVE_ROLE_KEY);
     this._token.set(null);
     this._email.set(null);
     this._roles.set([]);
+    this._activeRole.set(null);
     this.router.navigate(['/login']);
   }
 

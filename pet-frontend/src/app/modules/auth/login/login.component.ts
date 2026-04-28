@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../../core/services/auth.service';
+import { RolNombre } from '../../../core/models/models';
 
 @Component({
   selector: 'app-login',
@@ -29,84 +30,101 @@ import { AuthService } from '../../../core/services/auth.service';
       <h2 class="login-title">Bienvenido de nuevo</h2>
       <p class="login-sub">Inicia sesión en tu cuenta</p>
 
-      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="login-form" novalidate>
+      @if (step() === 1) {
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="login-form" novalidate>
 
-        <!-- Email -->
-        <div class="form-group">
-          <label class="form-label" for="email">Correo electrónico</label>
-          <div class="input-wrapper">
-            <span class="input-icon material-icons-round">mail_outline</span>
-            <input
-              id="email"
-              type="email"
-              formControlName="email"
-              class="form-control with-icon"
-              placeholder="veterinario@clinica.com"
-              autocomplete="email"
-            />
+          <!-- Email -->
+          <div class="form-group">
+            <label class="form-label" for="email">Correo electrónico</label>
+            <div class="input-wrapper">
+              <span class="input-icon material-icons-round">mail_outline</span>
+              <input
+                id="email"
+                type="email"
+                formControlName="email"
+                class="form-control with-icon"
+                placeholder="veterinario@clinica.com"
+                autocomplete="email"
+              />
+            </div>
+            @if (f['email'].touched && f['email'].errors?.['required']) {
+              <span class="form-error">El email es obligatorio</span>
+            }
+            @if (f['email'].touched && f['email'].errors?.['email']) {
+              <span class="form-error">Formato de email inválido</span>
+            }
           </div>
-          @if (f['email'].touched && f['email'].errors?.['required']) {
-            <span class="form-error">El email es obligatorio</span>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label class="form-label" for="password">Contraseña</label>
+            <div class="input-wrapper">
+              <span class="input-icon material-icons-round">lock_outline</span>
+              <input
+                id="password"
+                [type]="showPass() ? 'text' : 'password'"
+                formControlName="password"
+                class="form-control with-icon with-action"
+                placeholder="••••••••"
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="input-action"
+                (click)="showPass.update(v => !v)"
+                [attr.aria-label]="showPass() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              >
+                <span class="material-icons-round">
+                  {{ showPass() ? 'visibility_off' : 'visibility' }}
+                </span>
+              </button>
+            </div>
+            @if (f['password'].touched && f['password'].errors?.['required']) {
+              <span class="form-error">La contraseña es obligatoria</span>
+            }
+          </div>
+
+          <!-- Error global -->
+          @if (errorMsg()) {
+            <div class="alert-error">
+              <span class="material-icons-round">error_outline</span>
+              {{ errorMsg() }}
+            </div>
           }
-          @if (f['email'].touched && f['email'].errors?.['email']) {
-            <span class="form-error">Formato de email inválido</span>
-          }
+
+          <!-- Submit -->
+          <button
+            type="submit"
+            class="btn btn-primary submit-btn"
+            [disabled]="loading()"
+            id="btn-login"
+          >
+            @if (loading()) {
+              <mat-spinner diameter="20" color="accent" />
+              Iniciando sesión...
+            } @else {
+              <span class="material-icons-round">login</span>
+              Iniciar sesión
+            }
+          </button>
+
+        </form>
+      } @else {
+        <!-- STEP 2: Seleccionar Rol -->
+        <div class="roles-container">
+          <p class="text-center mb-4">Tienes múltiples roles asignados. Por favor selecciona cómo deseas ingresar:</p>
+          <div class="role-options">
+            @for (rol of availableRoles(); track rol) {
+              <button class="btn btn-outline role-btn" (click)="selectRole(rol)">
+                <span class="material-icons-round">
+                  {{ getRoleIcon(rol) }}
+                </span>
+                {{ getRoleName(rol) }}
+              </button>
+            }
+          </div>
         </div>
-
-        <!-- Password -->
-        <div class="form-group">
-          <label class="form-label" for="password">Contraseña</label>
-          <div class="input-wrapper">
-            <span class="input-icon material-icons-round">lock_outline</span>
-            <input
-              id="password"
-              [type]="showPass() ? 'text' : 'password'"
-              formControlName="password"
-              class="form-control with-icon with-action"
-              placeholder="••••••••"
-              autocomplete="current-password"
-            />
-            <button
-              type="button"
-              class="input-action"
-              (click)="showPass.update(v => !v)"
-              [attr.aria-label]="showPass() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-            >
-              <span class="material-icons-round">
-                {{ showPass() ? 'visibility_off' : 'visibility' }}
-              </span>
-            </button>
-          </div>
-          @if (f['password'].touched && f['password'].errors?.['required']) {
-            <span class="form-error">La contraseña es obligatoria</span>
-          }
-        </div>
-
-        <!-- Error global -->
-        @if (errorMsg()) {
-          <div class="alert-error">
-            <span class="material-icons-round">error_outline</span>
-            {{ errorMsg() }}
-          </div>
-        }
-
-        <!-- Submit -->
-        <button
-          type="submit"
-          class="btn btn-primary submit-btn"
-          [disabled]="loading()"
-          id="btn-login"
-        >
-          @if (loading()) {
-            <mat-spinner diameter="20" color="accent" />
-            Iniciando sesión...
-          } @else {
-            <span class="material-icons-round">login</span>
-            Iniciar sesión
-          }
-        </button>
-
-      </form>
+      }
 
       <p class="login-footer">
         ¿Primera vez? Solicita acceso a un administrador.
@@ -214,12 +232,35 @@ import { AuthService } from '../../../core/services/auth.service';
       color: var(--text-muted);
       margin-top: 1.5rem;
     }
+
+    .role-options {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .role-btn {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 1rem;
+      padding: 1rem;
+      font-size: 1rem;
+      text-align: left;
+    }
+    
+    .role-btn .material-icons-round {
+      font-size: 24px;
+      color: var(--color-primary-500);
+    }
   `],
 })
 export class LoginComponent {
+  step = signal(1); // 1 = Login, 2 = Select Role
   loading = signal(false);
   showPass = signal(false);
   errorMsg = signal('');
+  availableRoles = signal<RolNombre[]>([]);
 
   form: FormGroup;
 
@@ -249,9 +290,15 @@ export class LoginComponent {
     this.errorMsg.set('');
 
     this.authService.login(this.form.value).subscribe({
-      next: () => {
+      next: (res) => {
         this.loading.set(false);
-        this.router.navigate(['/app/citas']);
+        const roles = res.roles as RolNombre[];
+        if (roles.length > 1) {
+          this.availableRoles.set(roles);
+          this.step.set(2);
+        } else {
+          this.navigateToDashboard(roles[0]);
+        }
       },
       error: (err) => {
         this.loading.set(false);
@@ -261,5 +308,40 @@ export class LoginComponent {
         this.errorMsg.set(msg);
       },
     });
+  }
+
+  selectRole(rol: RolNombre): void {
+    this.authService.setActiveRole(rol);
+    this.navigateToDashboard(rol);
+  }
+
+  private navigateToDashboard(rol?: RolNombre): void {
+    if (rol === 'ROLE_CLIENTE') {
+      // If we had a specific client portal, we would route there. 
+      // For now, everyone goes to app
+      this.router.navigate(['/app']);
+    } else {
+      this.router.navigate(['/app/citas']);
+    }
+  }
+
+  getRoleName(rol: string): string {
+    const names: Record<string, string> = {
+      'ROLE_ADMIN': 'Administrador',
+      'ROLE_CLIENTE': 'Cliente',
+      'ROLE_VETERINARIO': 'Veterinario',
+      'ROLE_RECEPCIONISTA': 'Recepcionista'
+    };
+    return names[rol] || rol.replace('ROLE_', '');
+  }
+
+  getRoleIcon(rol: string): string {
+    const icons: Record<string, string> = {
+      'ROLE_ADMIN': 'admin_panel_settings',
+      'ROLE_CLIENTE': 'person',
+      'ROLE_VETERINARIO': 'medical_services',
+      'ROLE_RECEPCIONISTA': 'support_agent'
+    };
+    return icons[rol] || 'badge';
   }
 }

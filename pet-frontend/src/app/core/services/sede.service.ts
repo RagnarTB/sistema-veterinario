@@ -9,8 +9,14 @@ export class SedeService {
   private url = `${environment.apiUrl}/sedes`;
   constructor(private http: HttpClient) {}
 
-  listar(): Observable<SedeResponse[]> {
-    return this.http.get<SedeResponse[]>(this.url);
+  listar(page: number = 0, size: number = 10, search: string = ''): Observable<any> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    if (search) {
+      params = params.set('buscar', search);
+    }
+    return this.http.get<any>(this.url, { params });
   }
 
   buscarPorId(id: number): Observable<SedeResponse> {
@@ -27,5 +33,11 @@ export class SedeService {
 
   eliminar(id: number): Observable<void> {
     return this.http.delete<void>(`${this.url}/${id}`);
+  }
+
+  cambiarEstado(id: number, estado: boolean): Observable<void> {
+    return this.http.patch<void>(`${this.url}/${id}/estado`, null, {
+      params: new HttpParams().set('estado', estado),
+    });
   }
 }

@@ -15,9 +15,11 @@ import com.veterinaria.respositorios.SedeRepositorio;
 public class SedeServicio {
 
     private final SedeRepositorio sedeRepositorio;
+    private final com.veterinaria.respositorios.EmpleadoRepositorio empleadoRepositorio;
 
-    public SedeServicio(SedeRepositorio sedeRepositorio) {
+    public SedeServicio(SedeRepositorio sedeRepositorio, com.veterinaria.respositorios.EmpleadoRepositorio empleadoRepositorio) {
         this.sedeRepositorio = sedeRepositorio;
+        this.empleadoRepositorio = empleadoRepositorio;
     }
 
     public SedeResponseDTO guardar(SedeRequestDTO dto) {
@@ -60,8 +62,24 @@ public class SedeServicio {
     public void cambiarEstado(Long id, Boolean estado) {
         Sede sede = sedeRepositorio.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
+        
+        if (!estado && empleadoRepositorio.existsBySedes_Id(id)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se puede desactivar la sede porque tiene empleados asignados");
+        }
+
         sede.setActivo(estado);
         sedeRepositorio.save(sede);
+    }
+
+    public void eliminar(Long id) {
+        Sede sede = sedeRepositorio.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
+
+        if (empleadoRepositorio.existsBySedes_Id(id)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se puede eliminar la sede porque tiene empleados asignados");
+        }
+
+        sedeRepositorio.delete(sede);
     }
 
     private SedeResponseDTO mapear(Sede sede) {
