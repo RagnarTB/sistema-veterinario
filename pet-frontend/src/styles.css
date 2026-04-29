@@ -587,6 +587,10 @@ tbody td {
 }
 
 /* Paginator & Selects */
+.cdk-overlay-container {
+  z-index: 9999 !important;
+}
+
 .mat-mdc-paginator {
   background: transparent !important;
   color: var(--text-secondary) !important;

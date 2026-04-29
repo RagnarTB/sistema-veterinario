@@ -48,6 +48,26 @@ export class AuthService {
     return this.http.post<MensajeResponse>(`${this.apiUrl}/registro`, dto);
   }
 
+  loginConGoogle(idToken: string): Observable<AuthResponse | any> {
+    return this.http.post<AuthResponse | any>(`${this.apiUrl}/google`, { idToken }).pipe(
+      tap((res) => {
+        if (res.token) {
+          this.guardarSesion(res);
+        }
+      })
+    );
+  }
+
+  solicitarRegistroCorreo(email: string): Observable<MensajeResponse> {
+    return this.http.post<MensajeResponse>(`${this.apiUrl}/solicitar-registro-correo`, { email });
+  }
+
+  completarRegistro(dto: any): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/completar-registro`, dto).pipe(
+      tap((res) => this.guardarSesion(res))
+    );
+  }
+
   cambiarPassword(dto: CambiarPasswordRequest): Observable<MensajeResponse> {
     return this.http.post<MensajeResponse>(`${this.apiUrl}/cambiar-password`, dto);
   }

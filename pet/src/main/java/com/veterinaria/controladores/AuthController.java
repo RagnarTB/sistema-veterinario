@@ -16,6 +16,9 @@ import com.veterinaria.dtos.LoginRequestDTO;
 import com.veterinaria.dtos.MensajeResponseDTO;
 import com.veterinaria.dtos.RefreshTokenRequestDTO;
 import com.veterinaria.dtos.RegistroClienteDTO;
+import com.veterinaria.dtos.GoogleLoginRequestDTO;
+import com.veterinaria.dtos.SolicitarRegistroCorreoDTO;
+import com.veterinaria.dtos.CompletarRegistroDTO;
 import com.veterinaria.servicios.AuthServicio;
 
 import jakarta.validation.Valid;
@@ -38,7 +41,30 @@ public class AuthController {
     public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody LoginRequestDTO dto) {
         AuthResponseDTO respuesta = authServicio.login(dto);
         return ResponseEntity.ok(respuesta);
+    }
 
+    @PostMapping("/google")
+    public ResponseEntity<?> loginConGoogle(@Valid @RequestBody GoogleLoginRequestDTO dto) {
+        // Puede retornar AuthResponseDTO si el usuario existe,
+        // o un mapa con datos si falta completar registro.
+        Object respuesta = authServicio.loginConGoogle(dto);
+        if (respuesta instanceof AuthResponseDTO) {
+            return ResponseEntity.ok(respuesta);
+        } else {
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(respuesta); // 202 Accepted indica que falta paso
+        }
+    }
+
+    @PostMapping("/solicitar-registro-correo")
+    public ResponseEntity<MensajeResponseDTO> solicitarRegistroCorreo(@Valid @RequestBody SolicitarRegistroCorreoDTO dto) {
+        MensajeResponseDTO respuesta = authServicio.solicitarRegistroCorreo(dto);
+        return ResponseEntity.ok(respuesta);
+    }
+
+    @PostMapping("/completar-registro")
+    public ResponseEntity<AuthResponseDTO> completarRegistro(@Valid @RequestBody CompletarRegistroDTO dto) {
+        AuthResponseDTO respuesta = authServicio.completarRegistro(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
 
     @PostMapping("/cambiar-password")

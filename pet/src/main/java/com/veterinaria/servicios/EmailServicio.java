@@ -34,4 +34,24 @@ public class EmailServicio {
             // No bloqueamos todo si el smtp falla, pero en prod deberíamos lanzar una excepcion
         }
     }
+
+    public void enviarCorreoRegistroCliente(String toEmail, String token) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("no-reply@veterinaria.com");
+            message.setTo(toEmail);
+            message.setSubject("Completa tu registro - VetCare");
+
+            String urlConfirmacion = "http://localhost:4200/completar-registro?token=" + token + "&email=" + java.net.URLEncoder.encode(toEmail, "UTF-8");
+
+            message.setText("Hola,\n\n"
+                    + "Para terminar de configurar tu cuenta, haz clic en el siguiente enlace y completa tus datos:\n\n"
+                    + urlConfirmacion + "\n\n"
+                    + "Si no solicitaste este correo, puedes ignorarlo.");
+
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Error enviando el correo SMTP: " + e.getMessage());
+        }
+    }
 }

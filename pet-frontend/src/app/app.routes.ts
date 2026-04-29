@@ -37,6 +37,13 @@ export const routes: Routes = [
             (m) => m.ConfirmarCuentaComponent
           ),
       },
+      {
+        path: 'completar-registro',
+        loadComponent: () =>
+          import('./modules/auth/completar-registro/completar-registro.component').then(
+            (m) => m.CompletarRegistroComponent
+          ),
+      },
     ],
   },
 

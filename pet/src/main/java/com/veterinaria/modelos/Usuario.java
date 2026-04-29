@@ -50,4 +50,11 @@ public class Usuario {
     @OneToOne(mappedBy = "usuario")
     private Cliente cliente;
 
+    // Campos para Google OAuth
+    @Column(name = "google_subject")
+    private String googleSubject;
+
+    @Column(name = "google_vinculado")
+    private Boolean googleVinculado = false;
+
 }

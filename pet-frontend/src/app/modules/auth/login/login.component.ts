@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, OnInit, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   ReactiveFormsModule,
@@ -11,6 +11,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../../core/services/auth.service';
 import { RolNombre } from '../../../core/models/models';
+import { environment } from '../../../../environments/environment';
+
+declare var google: any;
 
 @Component({
   selector: 'app-login',
@@ -22,95 +25,17 @@ import { RolNombre } from '../../../core/models/models';
   ],
   template: `
     <div class="login-container fade-in-up">
-      <!-- Logo -->
       <div class="login-logo">
         <span class="material-icons-round">pets</span>
       </div>
 
       <h2 class="login-title">Bienvenido de nuevo</h2>
-      <p class="login-sub">Inicia sesión en tu cuenta</p>
+      <p class="login-sub">
+        {{ step() === 3 ? 'Comienza tu registro en VetCare' : 'Inicia sesión en tu cuenta' }}
+      </p>
 
-      @if (step() === 1) {
-        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="login-form" novalidate>
-
-          <!-- Email -->
-          <div class="form-group">
-            <label class="form-label" for="email">Correo electrónico</label>
-            <div class="input-wrapper">
-              <span class="input-icon material-icons-round">mail_outline</span>
-              <input
-                id="email"
-                type="email"
-                formControlName="email"
-                class="form-control with-icon"
-                placeholder="veterinario@clinica.com"
-                autocomplete="email"
-              />
-            </div>
-            @if (f['email'].touched && f['email'].errors?.['required']) {
-              <span class="form-error">El email es obligatorio</span>
-            }
-            @if (f['email'].touched && f['email'].errors?.['email']) {
-              <span class="form-error">Formato de email inválido</span>
-            }
-          </div>
-
-          <!-- Password -->
-          <div class="form-group">
-            <label class="form-label" for="password">Contraseña</label>
-            <div class="input-wrapper">
-              <span class="input-icon material-icons-round">lock_outline</span>
-              <input
-                id="password"
-                [type]="showPass() ? 'text' : 'password'"
-                formControlName="password"
-                class="form-control with-icon with-action"
-                placeholder="••••••••"
-                autocomplete="current-password"
-              />
-              <button
-                type="button"
-                class="input-action"
-                (click)="showPass.update(v => !v)"
-                [attr.aria-label]="showPass() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-              >
-                <span class="material-icons-round">
-                  {{ showPass() ? 'visibility_off' : 'visibility' }}
-                </span>
-              </button>
-            </div>
-            @if (f['password'].touched && f['password'].errors?.['required']) {
-              <span class="form-error">La contraseña es obligatoria</span>
-            }
-          </div>
-
-          <!-- Error global -->
-          @if (errorMsg()) {
-            <div class="alert-error">
-              <span class="material-icons-round">error_outline</span>
-              {{ errorMsg() }}
-            </div>
-          }
-
-          <!-- Submit -->
-          <button
-            type="submit"
-            class="btn btn-primary submit-btn"
-            [disabled]="loading()"
-            id="btn-login"
-          >
-            @if (loading()) {
-              <mat-spinner diameter="20" color="accent" />
-              Iniciando sesión...
-            } @else {
-              <span class="material-icons-round">login</span>
-              Iniciar sesión
-            }
-          </button>
-
-        </form>
-      } @else {
-        <!-- STEP 2: Seleccionar Rol -->
+      <!-- PASO 2: Selección de Rol -->
+      @if (step() === 2) {
         <div class="roles-container">
           <p class="text-center mb-4">Tienes múltiples roles asignados. Por favor selecciona cómo deseas ingresar:</p>
           <div class="role-options">
@@ -126,9 +51,71 @@ import { RolNombre } from '../../../core/models/models';
         </div>
       }
 
-      <p class="login-footer">
-        ¿Primera vez? Solicita acceso a un administrador.
-      </p>
+      <!-- PASO 1 y 3: Formularios -->
+      <div [style.display]="step() === 1 || step() === 3 ? 'block' : 'none'">
+        
+        <!-- STEP 1: Login Form -->
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="login-form" novalidate [style.display]="step() === 1 ? 'flex' : 'none'">
+          <!-- Email -->
+          <div class="form-group">
+            <label class="form-label" for="email">Correo electrónico</label>
+            <div class="input-wrapper">
+              <span class="input-icon material-icons-round">mail_outline</span>
+              <input id="email" type="email" formControlName="email" class="form-control with-icon" placeholder="veterinario@clinica.com" autocomplete="email"/>
+            </div>
+            @if (f['email'].touched && f['email'].errors?.['required']) { <span class="form-error">El email es obligatorio</span> }
+            @if (f['email'].touched && f['email'].errors?.['email']) { <span class="form-error">Formato de email inválido</span> }
+          </div>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label class="form-label" for="password">Contraseña</label>
+            <div class="input-wrapper">
+              <span class="input-icon material-icons-round">lock_outline</span>
+              <input id="password" [type]="showPass() ? 'text' : 'password'" formControlName="password" class="form-control with-icon with-action" placeholder="••••••••" autocomplete="current-password"/>
+              <button type="button" class="input-action" (click)="showPass.update(v => !v)" [attr.aria-label]="showPass() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                <span class="material-icons-round">{{ showPass() ? 'visibility_off' : 'visibility' }}</span>
+              </button>
+            </div>
+            @if (f['password'].touched && f['password'].errors?.['required']) { <span class="form-error">La contraseña es obligatoria</span> }
+          </div>
+
+          @if (errorMsg()) {
+            <div class="alert-error">
+              <span class="material-icons-round">error_outline</span> {{ errorMsg() }}
+            </div>
+          }
+
+          <button type="submit" class="btn btn-primary submit-btn" [disabled]="loading()" id="btn-login">
+            @if (loading()) { <mat-spinner diameter="20" color="accent" /> Iniciando sesión... } @else { <span class="material-icons-round">login</span> Iniciar sesión }
+          </button>
+        </form>
+
+        <!-- STEP 3: Solicitar Registro por Correo -->
+        <div class="roles-container fade-in-up" [style.display]="step() === 3 ? 'block' : 'none'">
+          <p class="text-center mb-4">Ingresa tu correo para enviarte un enlace de registro:</p>
+          <div class="form-group">
+            <div class="input-wrapper">
+              <span class="input-icon material-icons-round">mail_outline</span>
+              <input type="email" #regEmail class="form-control with-icon" placeholder="tu@correo.com">
+            </div>
+          </div>
+          <button class="btn btn-primary submit-btn" (click)="solicitarRegistro(regEmail.value)" [disabled]="loading()">
+            @if (loading()) { <mat-spinner diameter="20" color="accent" /> } @else { Enviar Enlace }
+          </button>
+          
+          <button class="btn btn-outline submit-btn mt-2" (click)="setStep(1)">Volver al Login</button>
+        </div>
+
+        <!-- Google Button (Shared for Step 1 and 3) -->
+        <div class="google-btn-container mt-4 mb-2">
+          <div id="googleButton"></div>
+        </div>
+
+        <p class="login-footer mt-4 text-center" [hidden]="step() !== 1">
+          ¿No tienes cuenta? <a href="javascript:void(0)" (click)="setStep(3)" class="text-primary font-medium hover:underline">Regístrate gratis</a>
+        </p>
+      </div>
     </div>
   `,
   styles: [`
@@ -253,10 +240,15 @@ import { RolNombre } from '../../../core/models/models';
       font-size: 24px;
       color: var(--color-primary-500);
     }
+    .google-btn-container {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
   `],
 })
-export class LoginComponent {
-  step = signal(1); // 1 = Login, 2 = Select Role
+export class LoginComponent implements OnInit {
+  step = signal(1); // 1 = Login, 2 = Select Role, 3 = Register Email
   loading = signal(false);
   showPass = signal(false);
   errorMsg = signal('');
@@ -268,11 +260,98 @@ export class LoginComponent {
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private snack: MatSnackBar
+    private snack: MatSnackBar,
+    private ngZone: NgZone
   ) {
     this.form = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', Validators.required],
+    });
+  }
+
+  setStep(newStep: number) {
+    this.step.set(newStep);
+    if (newStep === 1 || newStep === 3) {
+      setTimeout(() => this.renderGoogleButton(), 100);
+    }
+  }
+
+  ngOnInit() {
+    this.renderGoogleButton();
+  }
+
+  renderGoogleButton(retries = 0) {
+    if (typeof google !== 'undefined' && google.accounts) {
+      google.accounts.id.initialize({
+        client_id: environment.googleClientId,
+        callback: (response: any) => this.ngZone.run(() => this.handleGoogleCredential(response)),
+        auto_select: false,
+        cancel_on_tap_outside: true
+      });
+      
+      let rendered = false;
+      const btn1 = document.getElementById('googleButton');
+      if (btn1) {
+        google.accounts.id.renderButton(btn1, { theme: 'outline', size: 'large', width: '100%' });
+        rendered = true;
+      }
+      const btn2 = document.getElementById('googleButtonRegister');
+      if (btn2) {
+        google.accounts.id.renderButton(btn2, { theme: 'outline', size: 'large', width: '100%' });
+        rendered = true;
+      }
+
+      if (!rendered && retries < 10) {
+        setTimeout(() => this.renderGoogleButton(retries + 1), 150);
+      }
+    } else {
+      if (retries < 20) {
+        setTimeout(() => this.renderGoogleButton(retries + 1), 500);
+      }
+    }
+  }
+
+  handleGoogleCredential(response: any) {
+    this.loading.set(true);
+    this.authService.loginConGoogle(response.credential).subscribe({
+      next: (res) => {
+        this.loading.set(false);
+        if (res.requireRegistration) {
+          // Navegar a /completar-registro con los datos
+          this.router.navigate(['/completar-registro'], {
+            state: { data: res }
+          });
+        } else {
+          // Login exitoso
+          const roles = res.roles as RolNombre[];
+          if (roles.length > 1) {
+            this.availableRoles.set(roles);
+            this.step.set(2);
+          } else {
+            this.navigateToDashboard(roles[0]);
+          }
+        }
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.snack.open('Error al iniciar sesión con Google', 'Cerrar', { duration: 3000 });
+      }
+    });
+  }
+
+  solicitarRegistro(email: string) {
+    if (!email) return;
+    this.loading.set(true);
+    this.authService.solicitarRegistroCorreo(email).subscribe({
+      next: (res) => {
+        this.loading.set(false);
+        this.setStep(1);
+        this.snack.open(res.mensaje || 'Enlace enviado a tu correo', 'Cerrar', { duration: 5000 });
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.snack.open(err.error?.mensaje || 'Error al solicitar registro', 'Cerrar', { duration: 3000 });
+      }
     });
   }
 

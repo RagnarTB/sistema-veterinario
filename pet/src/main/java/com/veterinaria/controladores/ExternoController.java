@@ -21,7 +21,6 @@ public class ExternoController {
     private ReniecServicio reniecServicio;
 
     @GetMapping("/dni/{numero}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
     public ResponseEntity<ReniecResponseDTO> consultarDni(@PathVariable String numero) {
         ReniecResponseDTO data = reniecServicio.consultarDni(numero);
         return ResponseEntity.ok(data);

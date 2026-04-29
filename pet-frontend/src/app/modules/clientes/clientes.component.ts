@@ -83,11 +83,11 @@ import { ClienteDialogComponent } from './cliente-dialog/cliente-dialog.componen
               <td mat-cell *matCellDef="let element">
                 <div class="user-cell">
                   <div class="user-avatar" [ngClass]="element.activo ? 'bg-primary' : 'bg-disabled'">
-                    {{ element.nombre.charAt(0) }}{{ element.apellido.charAt(0) }}
+                    {{ element.nombre ? element.nombre.charAt(0).toUpperCase() : '?' }}{{ element.apellido ? element.apellido.charAt(0).toUpperCase() : '' }}
                   </div>
                   <div class="user-info">
-                    <span class="user-name">{{ element.nombre }} {{ element.apellido }}</span>
-                    <span class="user-doc">DNI: {{ element.dni }}</span>
+                    <span class="user-name">{{ element.nombre ? element.nombre + ' ' + element.apellido : 'Usuario Pendiente' }}</span>
+                    <span class="user-doc">DNI: {{ element.dni || 'Pendiente' }}</span>
                   </div>
                 </div>
               </td>
@@ -109,7 +109,7 @@ import { ClienteDialogComponent } from './cliente-dialog/cliente-dialog.componen
               <th mat-header-cell *matHeaderCellDef> Estado </th>
               <td mat-cell *matCellDef="let element">
                 <span class="status-badge" [ngClass]="element.activo ? 'status-active' : 'status-inactive'">
-                  {{ element.activo ? 'Activo' : 'Inactivo' }}
+                  {{ element.activo ? 'Activo' : 'Pendiente' }}
                 </span>
               </td>
             </ng-container>

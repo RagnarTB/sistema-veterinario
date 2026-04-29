@@ -17,7 +17,13 @@ import com.veterinaria.modelos.Usuario;
 import com.veterinaria.respositorios.ClienteRepositorio;
 import com.veterinaria.respositorios.RolRespositorio;
 import com.veterinaria.respositorios.UsuarioRepositorio;
+import com.veterinaria.respositorios.TokenPreRegistroRepositorio;
 import com.veterinaria.seguridad.JwtServicio;
+import com.veterinaria.dtos.GoogleLoginRequestDTO;
+import com.veterinaria.dtos.SolicitarRegistroCorreoDTO;
+import com.veterinaria.dtos.CompletarRegistroDTO;
+import com.veterinaria.modelos.TokenPreRegistro;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 
 import jakarta.transaction.Transactional;
 
@@ -33,13 +39,19 @@ public class AuthServicio {
     private final JwtServicio jwtServicio;
     private final org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
     private final com.veterinaria.respositorios.VerificationTokenRepositorio tokenRepositorio;
+    private final TokenPreRegistroRepositorio tokenPreRegistroRepositorio;
+    private final GoogleTokenVerifierServicio googleTokenVerifier;
+    private final EmailServicio emailServicio;
 
     public AuthServicio(UsuarioRepositorio usuarioRepositorio, RolRespositorio rolRespositorio,
             ClienteRepositorio clienteRepositorio, PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager, JwtServicio jwtServicio,
             org.springframework.security.core.userdetails.UserDetailsService userDetailsService,
             RefreshTokenServicio refreshTokenServicio,
-            com.veterinaria.respositorios.VerificationTokenRepositorio tokenRepositorio) {
+            com.veterinaria.respositorios.VerificationTokenRepositorio tokenRepositorio,
+            TokenPreRegistroRepositorio tokenPreRegistroRepositorio,
+            GoogleTokenVerifierServicio googleTokenVerifier,
+            EmailServicio emailServicio) {
         this.usuarioRepositorio = usuarioRepositorio;
         this.rolRespositorio = rolRespositorio;
         this.clienteRepositorio = clienteRepositorio;
@@ -49,6 +61,9 @@ public class AuthServicio {
         this.userDetailsService = userDetailsService;
         this.refreshTokenServicio = refreshTokenServicio;
         this.tokenRepositorio = tokenRepositorio;
+        this.tokenPreRegistroRepositorio = tokenPreRegistroRepositorio;
+        this.googleTokenVerifier = googleTokenVerifier;
+        this.emailServicio = emailServicio;
     }
 
     @Transactional // AQUI: Fundamental porque guardamos en 2 tablas
@@ -218,5 +233,204 @@ public class AuthServicio {
         tokenRepositorio.delete(token);
 
         return new MensajeResponseDTO("Cuenta confirmada. Ya puedes iniciar sesión.");
+    }
+
+    public Object loginConGoogle(GoogleLoginRequestDTO dto) {
+        GoogleIdToken.Payload payload = googleTokenVerifier.verificarToken(dto.getIdToken());
+        String email = payload.getEmail();
+        Boolean emailVerified = payload.getEmailVerified();
+
+        if (emailVerified == null || !emailVerified) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "El email de Google no está verificado");
+        }
+
+        java.util.Optional<Usuario> usuarioOpt = usuarioRepositorio.findByEmail(email);
+        
+        if (usuarioOpt.isPresent()) {
+            Usuario usuario = usuarioOpt.get();
+            // Vincular cuenta si no lo está
+            if (usuario.getGoogleSubject() == null) {
+                usuario.setGoogleSubject(payload.getSubject());
+                usuario.setGoogleVinculado(true);
+                usuarioRepositorio.save(usuario);
+            }
+            
+            if (usuario.getActivo()) {
+                // Loguear usando los mismos métodos que en login
+                org.springframework.security.core.userdetails.UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                java.util.List<String> roles = userDetails.getAuthorities().stream()
+                        .map(auth -> auth.getAuthority())
+                        .collect(java.util.stream.Collectors.toList());
+
+                java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+                extraClaims.put("roles", roles);
+
+                String token = jwtServicio.generarToken(extraClaims, userDetails);
+                String refreshToken = refreshTokenServicio.crearRefreshTokenParaUsuario(usuario);
+
+                return new AuthResponseDTO(token, refreshToken, email, roles);
+            } else {
+                // Usuario existe pero inactivo (Falta Completar Registro)
+                Cliente c = usuario.getCliente();
+                if (c != null && c.getNombre() == null) {
+                    c.setNombre((String) payload.get("given_name"));
+                    c.setApellido((String) payload.get("family_name"));
+                    clienteRepositorio.save(c);
+                }
+
+                java.util.Map<String, Object> registroRequerido = new java.util.HashMap<>();
+                registroRequerido.put("requireRegistration", true);
+                registroRequerido.put("email", email);
+                registroRequerido.put("nombre", payload.get("given_name"));
+                registroRequerido.put("apellido", payload.get("family_name"));
+                registroRequerido.put("googleToken", dto.getIdToken());
+                return registroRequerido;
+            }
+        } else {
+            // Usuario NO existe: Crear INACTIVO
+            Rol rolCliente = rolRespositorio.findByNombre("ROLE_CLIENTE")
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "El rol ROLE_CLIENTE no existe"));
+                
+            Usuario nuevoUsuario = new Usuario();
+            nuevoUsuario.setEmail(email);
+            nuevoUsuario.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+            nuevoUsuario.setGoogleSubject(payload.getSubject());
+            nuevoUsuario.setGoogleVinculado(true);
+            nuevoUsuario.setActivo(false);
+            nuevoUsuario.getRoles().add(rolCliente);
+            usuarioRepositorio.save(nuevoUsuario);
+
+            Cliente nuevoCliente = new Cliente();
+            nuevoCliente.setEmail(email);
+            nuevoCliente.setNombre((String) payload.get("given_name"));
+            nuevoCliente.setApellido((String) payload.get("family_name"));
+            nuevoCliente.setUsuario(nuevoUsuario);
+            nuevoCliente.setActivo(false);
+            clienteRepositorio.save(nuevoCliente);
+
+            // Devolver requireRegistration
+            java.util.Map<String, Object> registroRequerido = new java.util.HashMap<>();
+            registroRequerido.put("requireRegistration", true);
+            registroRequerido.put("email", email);
+            registroRequerido.put("nombre", payload.get("given_name"));
+            registroRequerido.put("apellido", payload.get("family_name"));
+            registroRequerido.put("googleToken", dto.getIdToken());
+            return registroRequerido;
+        }
+    }
+
+    @Transactional
+    public MensajeResponseDTO solicitarRegistroCorreo(SolicitarRegistroCorreoDTO dto) {
+        java.util.Optional<Usuario> usuarioOpt = usuarioRepositorio.findByEmail(dto.getEmail());
+        
+        Cliente cliente;
+        if (usuarioOpt.isPresent()) {
+            Usuario u = usuarioOpt.get();
+            if (u.getActivo()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email ya está registrado y activo");
+            } else {
+                cliente = u.getCliente();
+                if (cliente == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Error: Cliente no encontrado");
+            }
+        } else {
+            // Crear usuario inactivo
+            Rol rolCliente = rolRespositorio.findByNombre("ROLE_CLIENTE")
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "El rol ROLE_CLIENTE no existe"));
+                    
+            Usuario nuevoUsuario = new Usuario();
+            nuevoUsuario.setEmail(dto.getEmail());
+            nuevoUsuario.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+            nuevoUsuario.setActivo(false);
+            nuevoUsuario.getRoles().add(rolCliente);
+            Usuario usuarioGuardado = usuarioRepositorio.save(nuevoUsuario);
+
+            // Crear cliente inactivo
+            cliente = new Cliente();
+            cliente.setEmail(dto.getEmail());
+            cliente.setUsuario(usuarioGuardado);
+            cliente.setActivo(false);
+            clienteRepositorio.save(cliente);
+        }
+
+        // Generar token de verificación real (ligado al cliente)
+        String tokenStr = java.util.UUID.randomUUID().toString();
+        com.veterinaria.modelos.VerificationToken token = new com.veterinaria.modelos.VerificationToken(
+            tokenStr,
+            cliente,
+            java.time.LocalDateTime.now().plusHours(24)
+        );
+        tokenRepositorio.save(token);
+
+        emailServicio.enviarCorreoRegistroCliente(dto.getEmail(), tokenStr);
+
+        return new MensajeResponseDTO("Se ha enviado un enlace de registro a tu correo");
+    }
+
+    @Transactional
+    public AuthResponseDTO completarRegistro(CompletarRegistroDTO dto) {
+        String email;
+        Usuario usuario;
+        Cliente cliente;
+
+        // Si el token parece ser un JWT de Google (largo), validarlo
+        if (dto.getToken().length() > 100) {
+            GoogleIdToken.Payload payload = googleTokenVerifier.verificarToken(dto.getToken());
+            email = payload.getEmail();
+            usuario = usuarioRepositorio.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Usuario no encontrado"));
+            cliente = usuario.getCliente();
+        } else {
+            // Es token de correo
+            com.veterinaria.modelos.VerificationToken tokenEntity = tokenRepositorio.findByToken(dto.getToken())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enlace de registro inválido o expirado"));
+            
+            if (tokenEntity.getFechaExpiracion().isBefore(java.time.LocalDateTime.now())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El enlace de registro ha expirado");
+            }
+            cliente = tokenEntity.getCliente();
+            usuario = cliente.getUsuario();
+            email = usuario.getEmail();
+            
+            if (dto.getPassword() == null || dto.getPassword().trim().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña es obligatoria");
+            }
+            usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
+            tokenRepositorio.delete(tokenEntity);
+        }
+
+        if (!email.equalsIgnoreCase(dto.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email no coincide con el token");
+        }
+
+        // Validar si el DNI que intentan guardar YA pertenece a OTRO cliente
+        java.util.Optional<Cliente> clienteDni = clienteRepositorio.findByDni(dto.getDni());
+        if (clienteDni.isPresent() && !clienteDni.get().getId().equals(cliente.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El DNI ya se encuentra registrado por otro usuario");
+        }
+
+        // Actualizar el cliente
+        cliente.setNombre(dto.getNombre());
+        cliente.setApellido(dto.getApellido());
+        cliente.setDni(dto.getDni());
+        cliente.setTelefono(dto.getTelefono());
+        cliente.setActivo(true);
+        clienteRepositorio.save(cliente);
+
+        usuario.setActivo(true);
+        usuarioRepositorio.save(usuario);
+
+        // Generar JWT
+        org.springframework.security.core.userdetails.UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+        java.util.List<String> roles = userDetails.getAuthorities().stream()
+                .map(auth -> auth.getAuthority())
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+        extraClaims.put("roles", roles);
+
+        String tokenJwt = jwtServicio.generarToken(extraClaims, userDetails);
+        String refreshToken = refreshTokenServicio.crearRefreshTokenParaUsuario(usuario);
+
+        return new AuthResponseDTO(tokenJwt, refreshToken, email, roles);
     }
 }
