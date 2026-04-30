@@ -50,7 +50,7 @@ export interface EmpleadoDialogData {
           <mat-form-field appearance="outline" class="dni-field">
             <mat-label>DNI</mat-label>
             <mat-icon matPrefix>badge</mat-icon>
-            <input matInput formControlName="dni" [readonly]="isEdit()" placeholder="Ej. 12345678" />
+            <input matInput formControlName="dni" [readonly]="isEdit()" placeholder="Ej. 12345678"maxlength="8"(input)="form.get('dni')?.markAsTouched()"required />
             <mat-error *ngIf="form.get('dni')?.hasError('required')">El DNI es obligatorio</mat-error>
             <mat-error *ngIf="form.get('dni')?.hasError('pattern')">Debe tener 8 dígitos</mat-error>
           </mat-form-field>
@@ -92,7 +92,8 @@ export interface EmpleadoDialogData {
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Teléfono</mat-label>
           <mat-icon matPrefix>phone</mat-icon>
-          <input matInput formControlName="telefono" />
+          <input matInput formControlName="telefono" maxlength="9" (input)="form.get('telefono')?.markAsTouched()"required/>
+          <mat-error *ngIf="form.get('telefono')?.hasError('pattern')">Debe tener exactamente 9 dígitos numéricos</mat-error>
         </mat-form-field>
 
         <!-- Sueldo Base -->
@@ -187,7 +188,7 @@ export class EmpleadoDialogComponent implements OnInit {
       dni: [{value: data.empleado?.dni || '', disabled: this.isEdit()}, [Validators.required, Validators.pattern('^[0-9]{8}$')]],
       nombre: [{value: data.empleado?.nombre || '', disabled: this.isEdit()}, Validators.required],
       apellido: [{value: data.empleado?.apellido || '', disabled: this.isEdit()}, Validators.required],
-      telefono: [data.empleado?.telefono || '', Validators.required],
+      telefono: [data.empleado?.telefono || '', Validators.required, Validators.pattern('^[0-9]{8}$')],
       email: [{value: data.empleado?.email || '', disabled: this.isEdit()}, [Validators.required, Validators.email]],
       especialidad: [{value: data.empleado?.especialidad || '', disabled: this.isEdit()}],
       sueldoBase: [{value: data.empleado?.sueldoBase || null, disabled: this.isEdit()}],
@@ -245,6 +246,8 @@ export class EmpleadoDialogComponent implements OnInit {
             nombre: res.first_name,
             apellido: `${res.first_last_name} ${res.second_last_name}`.trim()
           });
+          this.form.get('nombre')?.disable();
+          this.form.get('apellido')?.disable();
           this.snack.open('DNI encontrado exitosamente', 'Cerrar', { duration: 3000 });
         }
         this.buscandoDni = false;

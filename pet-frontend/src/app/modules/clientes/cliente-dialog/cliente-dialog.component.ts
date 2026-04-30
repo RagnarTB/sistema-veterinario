@@ -179,6 +179,8 @@ export class ClienteDialogComponent implements OnInit {
             nombre: res.first_name,
             apellido: `${res.first_last_name} ${res.second_last_name}`.trim()
           });
+          this.form.get('nombre')?.disable();
+          this.form.get('apellido')?.disable();
           this.snack.open('DNI encontrado exitosamente', 'Cerrar', { duration: 3000 });
         }
         this.buscandoDni = false;

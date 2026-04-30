@@ -55,7 +55,7 @@ export interface SedeDialogData {
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Teléfono</mat-label>
           <mat-icon matPrefix>phone</mat-icon>
-          <input matInput formControlName="telefono" placeholder="Ej. 987654321" />
+          <input matInput formControlName="telefono" placeholder="Ej. 987654321" required maxlength="9"/>
           <mat-error *ngIf="form.get('telefono')?.hasError('required')">El teléfono es obligatorio</mat-error>
         </mat-form-field>
 
