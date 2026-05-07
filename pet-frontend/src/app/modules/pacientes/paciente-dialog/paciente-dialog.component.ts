@@ -54,7 +54,7 @@ import { ClienteService } from '../../../core/services/cliente.service';
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Nombre de la mascota</mat-label>
             <mat-icon matPrefix class="prefix-icon">pets</mat-icon>
-            <input matInput formControlName="nombre" placeholder="Ej. Firulais" required />
+            <input matInput formControlName="nombre" placeholder="Ej. Firulais" required (keydown)="soloLetras($event)" />
             <mat-error *ngIf="form.get('nombre')?.hasError('required')">El nombre es requerido</mat-error>
           </mat-form-field>
 
@@ -90,7 +90,7 @@ import { ClienteService } from '../../../core/services/cliente.service';
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Raza (Opcional)</mat-label>
             <mat-icon matPrefix class="prefix-icon">style</mat-icon>
-            <input matInput formControlName="raza" placeholder="Ej. Bulldog, Persa..." />
+            <input matInput formControlName="raza" placeholder="Ej. Bulldog, Persa..." (keydown)="soloLetras($event)" />
           </mat-form-field>
 
           <!-- Fecha de Nacimiento -->
@@ -242,6 +242,13 @@ export class PacienteDialogComponent implements OnInit {
     return cliente ? `${cliente.nombre} ${cliente.apellido}`.trim() : '';
   }
 
+  soloLetras(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
+  }
   onSubmit(): void {
     if (this.form.valid) {
       const result: PacienteRequest = { ...this.form.getRawValue() };

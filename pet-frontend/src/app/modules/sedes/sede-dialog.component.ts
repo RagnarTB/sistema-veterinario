@@ -55,7 +55,7 @@ export interface SedeDialogData {
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Teléfono</mat-label>
           <mat-icon matPrefix>phone</mat-icon>
-          <input matInput formControlName="telefono" placeholder="Ej. 987654321" />
+          <input matInput formControlName="telefono" placeholder="Ej. 987654321" required maxlength="9" (keydown)="soloNumeros($event)"/>
           <mat-error *ngIf="form.get('telefono')?.hasError('required')">El teléfono es obligatorio</mat-error>
         </mat-form-field>
 
@@ -97,6 +97,15 @@ export class SedeDialogComponent implements OnInit {
   }
 
   ngOnInit() {}
+
+  soloNumeros(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[0-9]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+
 
   guardar() {
     if (this.form.invalid) return;

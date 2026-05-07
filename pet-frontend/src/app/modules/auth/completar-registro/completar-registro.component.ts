@@ -27,7 +27,7 @@ import { ExternoService, ReniecResponse } from '../../../core/services/externo.s
           <div class="flex gap-2">
             <div class="input-wrapper flex-1">
               <span class="input-icon material-icons-round">badge</span>
-              <input id="dni" type="text" formControlName="dni" class="form-control with-icon" placeholder="12345678" maxlength="8">
+              <input id="dni" type="text" formControlName="dni" class="form-control with-icon" placeholder="12345678" maxlength="8" (keydown)="soloNumeros($event)" >
             </div>
             <button type="button" class="btn btn-outline" (click)="buscarDni()" [disabled]="form.get('dni')?.invalid || loadingReniec()">
               @if (loadingReniec()) {
@@ -43,12 +43,15 @@ import { ExternoService, ReniecResponse } from '../../../core/services/externo.s
         <div class="grid grid-cols-2 gap-4">
           <div class="form-group mb-4">
             <label class="form-label" for="nombre">Nombres</label>
-            <input id="nombre" type="text" formControlName="nombre" class="form-control" placeholder="Ej. Juan">
+            <input id="nombre" type="text" formControlName="nombre" class="form-control" placeholder="Ej. Juan"(input)="f['nombre'].markAsTouched()" (keydown)="soloLetras($event)">
+            @if (f['nombre'].touched && f['nombre'].hasError('required')) {<span class="form-error">El nombre es obligatorio</span>
+            }
           </div>
           <div class="form-group mb-4">
             <label class="form-label" for="apellido">Apellidos</label>
-            <input id="apellido" type="text" formControlName="apellido" class="form-control" placeholder="Ej. Pérez">
-          </div>
+            <input id="apellido" type="text" formControlName="apellido" class="form-control" placeholder="Ej. Pérez" (input)="f['apellido'].markAsTouched()" (keydown)="soloLetras($event)">
+            @if (f['apellido'].touched && f['apellido'].hasError('required')) {<span class="form-error">El apellido es obligatorio</span>}        
+            </div>
         </div>
 
         <div class="form-group mb-4">
@@ -63,7 +66,7 @@ import { ExternoService, ReniecResponse } from '../../../core/services/externo.s
           <label class="form-label" for="telefono">Teléfono</label>
           <div class="input-wrapper">
             <span class="input-icon material-icons-round">phone</span>
-            <input id="telefono" type="text" formControlName="telefono" class="form-control with-icon" placeholder="987654321" maxlength="9">
+            <input id="telefono" type="text" formControlName="telefono" class="form-control with-icon" placeholder="987654321" maxlength="9" (keydown)="soloNumeros($event)">
           </div>
           @if (f['telefono'].touched && f['telefono'].invalid) { <span class="form-error">Teléfono requerido</span> }
         </div>
@@ -129,7 +132,7 @@ export class CompletarRegistroComponent implements OnInit {
   ) {
     this.form = this.fb.group({
       dni: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(8)]],
-      nombre: ['', Validators.required],
+      nombre: ['', Validators.required,],
       apellido: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       telefono: ['', Validators.required],
@@ -184,6 +187,8 @@ export class CompletarRegistroComponent implements OnInit {
           nombre: res.first_name,
           apellido: res.first_last_name + ' ' + res.second_last_name
         });
+        this.form.get('nombre')?.disable();
+        this.form.get('apellido')?.disable();
       },
       error: () => {
         this.loadingReniec.set(false);
@@ -193,6 +198,22 @@ export class CompletarRegistroComponent implements OnInit {
         this.form.get('apellido')?.enable();
       }
     });
+  }
+
+  soloLetras(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+  
+  soloNumeros(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[0-9]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
   }
 
   onSubmit() {
@@ -219,4 +240,6 @@ export class CompletarRegistroComponent implements OnInit {
       }
     });
   }
+
+
 }
