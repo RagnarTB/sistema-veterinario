@@ -50,7 +50,7 @@ export interface EmpleadoDialogData {
           <mat-form-field appearance="outline" class="dni-field">
             <mat-label>DNI</mat-label>
             <mat-icon matPrefix>badge</mat-icon>
-            <input matInput formControlName="dni" [readonly]="isEdit()" placeholder="Ej. 12345678"maxlength="8"(input)="form.get('dni')?.markAsTouched()"required />
+            <input matInput formControlName="dni" [readonly]="isEdit()" placeholder="Ej. 12345678"maxlength="8"(input)="form.get('dni')?.markAsTouched()"required  (keydown)="soloNumeros($event)"/>
             <mat-error *ngIf="form.get('dni')?.hasError('required')">El DNI es obligatorio</mat-error>
             <mat-error *ngIf="form.get('dni')?.hasError('pattern')">Debe tener 8 dígitos</mat-error>
           </mat-form-field>
@@ -68,14 +68,14 @@ export interface EmpleadoDialogData {
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Nombre</mat-label>
           <mat-icon matPrefix>person</mat-icon>
-          <input matInput formControlName="nombre" [readonly]="isEdit()" />
+          <input matInput formControlName="nombre" [readonly]="isEdit()" (keydown)="soloLetras($event)"/>
         </mat-form-field>
         
         <!-- Apellido -->
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Apellido</mat-label>
           <mat-icon matPrefix>person_outline</mat-icon>
-          <input matInput formControlName="apellido" [readonly]="isEdit()" />
+          <input matInput formControlName="apellido" [readonly]="isEdit()" (keydown)="soloLetras($event)"/>
         </mat-form-field>
 
         <!-- Correo Electrónico -->
@@ -92,7 +92,7 @@ export interface EmpleadoDialogData {
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Teléfono</mat-label>
           <mat-icon matPrefix>phone</mat-icon>
-          <input matInput formControlName="telefono" maxlength="9" (input)="form.get('telefono')?.markAsTouched()"required/>
+          <input matInput formControlName="telefono" maxlength="9" (input)="form.get('telefono')?.markAsTouched()"required (keydown)="soloNumeros($event)"/>
           <mat-error *ngIf="form.get('telefono')?.hasError('pattern')">Debe tener exactamente 9 dígitos numéricos</mat-error>
         </mat-form-field>
 
@@ -107,7 +107,7 @@ export interface EmpleadoDialogData {
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Especialidad (Opcional)</mat-label>
           <mat-icon matPrefix>work_outline</mat-icon>
-          <input matInput formControlName="especialidad" style="text-transform: uppercase;" />
+          <input matInput formControlName="especialidad" style="text-transform: uppercase;" (keydown)="soloLetras($event)"/>
         </mat-form-field>
         
         <!-- Sedes Asignadas -->
@@ -284,5 +284,21 @@ export class EmpleadoDialogComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  soloNumeros(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[0-9]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+
+  soloLetras(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
   }
 }

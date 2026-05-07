@@ -43,7 +43,7 @@ import { MatIconModule } from '@angular/material/icon';
             <mat-form-field appearance="outline" class="dni-field">
               <mat-label>DNI / Documento</mat-label>
               <mat-icon matPrefix class="prefix-icon">badge</mat-icon>
-              <input matInput formControlName="dni" placeholder="Ej. 12345678" required maxlength="8"/>
+              <input matInput formControlName="dni" placeholder="Ej. 12345678" required maxlength="8" (keydown)="soloNumeros($event)"/>
               <mat-error *ngIf="form.get('dni')?.hasError('required')">El DNI es obligatorio</mat-error>
               <mat-error *ngIf="form.get('dni')?.hasError('pattern')">Debe tener exactamente 8 dígitos numéricos</mat-error>
             </mat-form-field>
@@ -59,21 +59,21 @@ import { MatIconModule } from '@angular/material/icon';
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Nombre</mat-label>
             <mat-icon matPrefix class="prefix-icon">person</mat-icon>
-            <input matInput formControlName="nombre" placeholder="Ej. Juan" required />
+            <input matInput formControlName="nombre" placeholder="Ej. Juan" required (keydown)="soloLetras($event)"/>
             <mat-error *ngIf="form.get('nombre')?.hasError('required')">El nombre es obligatorio</mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Apellido</mat-label>
             <mat-icon matPrefix class="prefix-icon">person_outline</mat-icon>
-            <input matInput formControlName="apellido" placeholder="Ej. Pérez" required />
+            <input matInput formControlName="apellido" placeholder="Ej. Pérez" required (keydown)="soloLetras($event)"/>
             <mat-error *ngIf="form.get('apellido')?.hasError('required')">El apellido es obligatorio</mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Teléfono</mat-label>
             <mat-icon matPrefix class="prefix-icon">phone</mat-icon>
-            <input matInput formControlName="telefono" placeholder="Ej. 987654321" required  maxlength="9"/>
+            <input matInput formControlName="telefono" placeholder="Ej. 987654321" required  maxlength="9" (keydown)="soloNumeros($event)"/>
             <mat-error *ngIf="form.get('telefono')?.hasError('required')">El teléfono es obligatorio</mat-error>
             <mat-error *ngIf="form.get('telefono')?.hasError('pattern')">Debe tener exactamente 9 dígitos numéricos</mat-error>
           </mat-form-field>
@@ -191,6 +191,23 @@ export class ClienteDialogComponent implements OnInit {
       }
     });
   }
+
+   soloLetras(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+  
+  soloNumeros(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[0-9]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+
 
     // Si estamos editando y el email / dni se usa para login, a veces no se debería poder editar, 
     // pero lo dejamos habilitado a menos que el backend lo restrinja.

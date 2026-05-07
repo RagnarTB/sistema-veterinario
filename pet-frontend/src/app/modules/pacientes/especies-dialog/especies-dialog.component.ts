@@ -41,7 +41,7 @@ import { ModalConfirmacionComponent } from '../../../shared/components/modal-con
       <div class="add-container">
         <mat-form-field appearance="outline" class="add-input">
           <mat-label>Nueva Especie</mat-label>
-          <input matInput [formControl]="nuevoNombre" placeholder="Ej. Canino, Felino..." (keyup.enter)="agregar()" />
+          <input matInput [formControl]="nuevoNombre" placeholder="Ej. Canino, Felino..." (keyup.enter)="agregar()" (keydown)="soloLetras($event)"/>
         </mat-form-field>
         <button mat-flat-button color="primary" class="btn-add" (click)="agregar()" [disabled]="nuevoNombre.invalid || loading()">
           <mat-icon>add</mat-icon> Guardar
@@ -197,6 +197,14 @@ export class EspeciesDialogComponent implements OnInit {
         });
       }
     });
+  }
+
+  soloLetras(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
   }
 
   eliminarFisicamente(especie: EspecieResponse) {
