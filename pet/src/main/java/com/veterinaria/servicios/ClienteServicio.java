@@ -91,10 +91,9 @@ public class ClienteServicio {
     public Page<ClienteResponseDTO> listarTodos(String buscar, Pageable pageable) {
         Page<Cliente> pagina;
         if (buscar != null && !buscar.trim().isEmpty()) {
-            pagina = clienteRepositorio.findByUsuarioNombreContainingIgnoreCaseOrUsuarioApellidoContainingIgnoreCaseOrUsuarioDniContaining(
-                    buscar, buscar, buscar, pageable);
+            pagina = clienteRepositorio.buscarClientesConRol(buscar, pageable);
         } else {
-            pagina = clienteRepositorio.findAll(pageable);
+            pagina = clienteRepositorio.findAllConRol(pageable);
         }
 
         return pagina.map(cliente -> {

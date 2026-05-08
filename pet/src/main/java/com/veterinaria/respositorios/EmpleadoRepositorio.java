@@ -24,6 +24,9 @@ public interface EmpleadoRepositorio extends JpaRepository<Empleado, Long> {
     boolean existsBySedes_Id(Long sedeId);
 
     // Búsqueda unificada para la barra de búsqueda de empleados
-    Page<Empleado> findByUsuarioNombreContainingIgnoreCaseOrUsuarioApellidoContainingIgnoreCaseOrUsuarioDniContaining(
-            String nombre, String apellido, String dni, Pageable pageable);
+    @Query("SELECT DISTINCT e FROM Empleado e JOIN e.usuario u JOIN u.roles r WHERE r.nombre IN ('ROLE_ADMIN', 'ROLE_RECEPCIONISTA', 'ROLE_VETERINARIO') AND (LOWER(u.nombre) LIKE LOWER(CONCAT('%', :buscar, '%')) OR LOWER(u.apellido) LIKE LOWER(CONCAT('%', :buscar, '%')) OR u.dni LIKE CONCAT('%', :buscar, '%'))")
+    Page<Empleado> buscarEmpleadosConRoles(@Param("buscar") String buscar, Pageable pageable);
+
+    @Query("SELECT DISTINCT e FROM Empleado e JOIN e.usuario u JOIN u.roles r WHERE r.nombre IN ('ROLE_ADMIN', 'ROLE_RECEPCIONISTA', 'ROLE_VETERINARIO')")
+    Page<Empleado> findAllConRoles(Pageable pageable);
 }

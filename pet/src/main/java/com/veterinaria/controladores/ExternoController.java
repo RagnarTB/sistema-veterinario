@@ -20,9 +20,36 @@ public class ExternoController {
     @Autowired
     private ReniecServicio reniecServicio;
 
+    @Autowired
+    private com.veterinaria.respositorios.UsuarioRepositorio usuarioRepositorio;
+
     @GetMapping("/dni/{numero}")
     public ResponseEntity<ReniecResponseDTO> consultarDni(@PathVariable String numero) {
-        ReniecResponseDTO data = reniecServicio.consultarDni(numero);
+        ReniecResponseDTO data = null;
+        java.util.Optional<com.veterinaria.modelos.Usuario> userOpt = usuarioRepositorio.findByDni(numero);
+
+        try {
+            data = reniecServicio.consultarDni(numero);
+        } catch (Exception e) {
+            if (userOpt.isPresent()) {
+                data = new ReniecResponseDTO();
+                data.setDocumentNumber(numero);
+            } else {
+                throw e;
+            }
+        }
+
+        if (userOpt.isPresent()) {
+            com.veterinaria.modelos.Usuario u = userOpt.get();
+            data.setExisteEnBd(true);
+            data.setEmail(u.getEmail());
+            // Sobrescribimos o asignamos el nombre del sistema
+            data.setFirstName(u.getNombre());
+            data.setFirstLastName(u.getApellido());
+            data.setSecondLastName("");
+            data.setFullName(u.getNombre() + " " + u.getApellido());
+        }
+
         return ResponseEntity.ok(data);
     }
 

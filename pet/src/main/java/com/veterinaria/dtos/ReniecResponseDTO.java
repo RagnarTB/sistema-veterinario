@@ -22,4 +22,10 @@ public class ReniecResponseDTO {
 
     @JsonProperty("document_number")
     private String documentNumber;
+
+    @JsonProperty("existe_en_bd")
+    private Boolean existeEnBd = false;
+
+    @JsonProperty("email")
+    private String email;
 }

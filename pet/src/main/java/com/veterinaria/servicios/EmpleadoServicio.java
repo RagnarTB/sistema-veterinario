@@ -37,10 +37,12 @@ public class EmpleadoServicio {
     private final SedeRepositorio sedeRepositorio;
     private final VerificationTokenRepositorio tokenRepositorio;
     private final EmailServicio emailServicio;
+    private final com.veterinaria.respositorios.ClienteRepositorio clienteRepositorio;
 
     public EmpleadoServicio(EmpleadoRepositorio empleadoRepositorio, UsuarioRepositorio usuarioRepositorio,
             RolRespositorio rolRepositorio, PasswordEncoder passwordEncoder, SedeRepositorio sedeRepositorio,
-            VerificationTokenRepositorio tokenRepositorio, EmailServicio emailServicio) {
+            VerificationTokenRepositorio tokenRepositorio, EmailServicio emailServicio,
+            com.veterinaria.respositorios.ClienteRepositorio clienteRepositorio) {
         this.empleadoRepositorio = empleadoRepositorio;
         this.usuarioRepositorio = usuarioRepositorio;
         this.rolRepositorio = rolRepositorio;
@@ -48,6 +50,7 @@ public class EmpleadoServicio {
         this.sedeRepositorio = sedeRepositorio;
         this.tokenRepositorio = tokenRepositorio;
         this.emailServicio = emailServicio;
+        this.clienteRepositorio = clienteRepositorio;
     }
 
     @Transactional
@@ -55,12 +58,21 @@ public class EmpleadoServicio {
 
         Usuario usuarioGuardado = null;
         Optional<Usuario> usuarioPorDni = usuarioRepositorio.findByDni(dto.getDni());
+        Empleado empleado = new Empleado();
 
         if (usuarioPorDni.isPresent()) {
             Usuario u = usuarioPorDni.get();
-            if (u.getEmpleado() != null) {
+            boolean tieneRolesDeEmpleado = u.getRoles().stream()
+                    .anyMatch(r -> r.getNombre().equals("ROLE_ADMIN") || r.getNombre().equals("ROLE_RECEPCIONISTA") || r.getNombre().equals("ROLE_VETERINARIO"));
+
+            if (u.getEmpleado() != null && tieneRolesDeEmpleado) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe un empleado con este DNI");
             }
+            // Reutilizar el empleado si existe pero estaba oculto (sin roles)
+            if (u.getEmpleado() != null) {
+                empleado = u.getEmpleado();
+            }
+
             // Actualizar datos del usuario existente (ej. si era solo cliente)
             u.setNombre(dto.getNombre());
             u.setApellido(dto.getApellido());
@@ -111,8 +123,6 @@ public class EmpleadoServicio {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Sedes no encontradas");
         }
         Set<Sede> sedes = new HashSet<>(sedesLista);
-
-        Empleado empleado = new Empleado();
         empleado.setEspecialidad(dto.getEspecialidad());
         empleado.setNumeroColegiatura(dto.getNumeroColegiatura());
         empleado.setSueldoBase(dto.getSueldoBase());
@@ -134,16 +144,25 @@ public class EmpleadoServicio {
             emailServicio.enviarCorreoConfirmacion(usuarioGuardado.getEmail(), tokenStr);
         }
 
+        // Si se le asignó ROLE_CLIENTE y no tiene registro de Cliente, crearlo
+        boolean tieneRolCliente = usuarioGuardado.getRoles().stream().anyMatch(r -> r.getNombre().equals("ROLE_CLIENTE"));
+        if (tieneRolCliente && usuarioGuardado.getCliente() == null) {
+            com.veterinaria.modelos.Cliente nuevoCliente = new com.veterinaria.modelos.Cliente();
+            nuevoCliente.setUsuario(usuarioGuardado);
+            nuevoCliente.setActivo(usuarioGuardado.getActivo());
+            nuevoCliente.setEsInvitado(false);
+            clienteRepositorio.save(nuevoCliente);
+        }
+
         return mapearAResponse(empleadoGuardado);
     }
 
     public Page<EmpleadoResponseDTO> listarTodos(String buscar, Pageable pageable) {
         Page<Empleado> pagina;
         if (buscar != null && !buscar.trim().isEmpty()) {
-            pagina = empleadoRepositorio.findByUsuarioNombreContainingIgnoreCaseOrUsuarioApellidoContainingIgnoreCaseOrUsuarioDniContaining(
-                    buscar, buscar, buscar, pageable);
+            pagina = empleadoRepositorio.buscarEmpleadosConRoles(buscar, pageable);
         } else {
-            pagina = empleadoRepositorio.findAll(pageable);
+            pagina = empleadoRepositorio.findAllConRoles(pageable);
         }
         return pagina.map(this::mapearAResponse);
     }
@@ -208,6 +227,17 @@ public class EmpleadoServicio {
         empleado.setSedes(sedes);
 
         Empleado empleadoGuardado = empleadoRepositorio.save(empleado);
+
+        // Si se le asignó ROLE_CLIENTE y no tiene registro de Cliente, crearlo
+        boolean tieneRolCliente = usuario.getRoles().stream().anyMatch(r -> r.getNombre().equals("ROLE_CLIENTE"));
+        if (tieneRolCliente && usuario.getCliente() == null) {
+            com.veterinaria.modelos.Cliente nuevoCliente = new com.veterinaria.modelos.Cliente();
+            nuevoCliente.setUsuario(usuario);
+            nuevoCliente.setActivo(usuario.getActivo());
+            nuevoCliente.setEsInvitado(false);
+            clienteRepositorio.save(nuevoCliente);
+        }
+
         return mapearAResponse(empleadoGuardado);
     }
 
