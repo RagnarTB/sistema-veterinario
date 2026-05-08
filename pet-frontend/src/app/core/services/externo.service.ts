@@ -9,6 +9,8 @@ export interface ReniecResponse {
   second_last_name: string;
   full_name: string;
   document_number: string;
+  existe_en_bd?: boolean;
+  email?: string;
 }
 
 @Injectable({

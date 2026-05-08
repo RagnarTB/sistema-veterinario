@@ -430,15 +430,19 @@ export class EmpleadoDialogComponent implements OnInit {
         if (res && res.first_name) {
           this.form.patchValue({
             nombre: res.first_name,
-            apellido: `${res.first_last_name} ${res.second_last_name}`.trim()
+            apellido: res.first_last_name + (res.second_last_name ? ' ' + res.second_last_name : '')
           });
           this.form.get('nombre')?.disable();
           this.form.get('apellido')?.disable();
 
-          // Verificar si este DNI ya pertenece a un cliente/usuario en el sistema
-          // El backend detectará esto al guardar; aquí mostramos una pista visual
-          // basándonos en que si los datos se cargaron, el admin sabrá si es un cliente existente
-          this.snack.open('DNI encontrado exitosamente', 'Cerrar', { duration: 3000 });
+          if (res.existe_en_bd && res.email) {
+            this.form.patchValue({ email: res.email });
+            this.form.get('email')?.disable();
+            this.dniEsCliente.set(true);
+            this.snack.open('DNI registrado en el sistema. Se reutilizarán sus datos.', 'Entendido', { duration: 4000 });
+          } else {
+            this.snack.open('DNI encontrado exitosamente', 'Cerrar', { duration: 3000 });
+          }
         }
         this.buscandoDni = false;
       },
