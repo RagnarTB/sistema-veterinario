@@ -67,7 +67,7 @@ public class DesparasitacionServicio {
         dto.setPacienteId(desparasitacion.getPaciente().getId()); // Note: Paciente entity has private Long Id; getter might be getId() or getId(), assuming getId() because of lombok @Data.
         dto.setPacienteNombre(desparasitacion.getPaciente().getNombre());
         dto.setEmpleadoId(desparasitacion.getEmpleado().getId());
-        dto.setEmpleadoNombre(desparasitacion.getEmpleado().getNombre() + " " + desparasitacion.getEmpleado().getApellido());
+        dto.setEmpleadoNombre(desparasitacion.getEmpleado().getUsuario().getNombre() + " " + desparasitacion.getEmpleado().getUsuario().getApellido());
         return dto;
     }
 }

@@ -7,11 +7,27 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public class AuthResponseDTO {
     private String token;
     private String refreshToken;
     private String email;
     private List<String> roles; // ROLE_ADMIN, ROLE_VETERINARIO, etc.
+    private boolean requiresRoleSelection;
+
+    public AuthResponseDTO(String token, String refreshToken, String email, List<String> roles) {
+        this.token = token;
+        this.refreshToken = refreshToken;
+        this.email = email;
+        this.roles = roles;
+        this.requiresRoleSelection = false;
+    }
+
+    public AuthResponseDTO(String token, String refreshToken, String email, List<String> roles, boolean requiresRoleSelection) {
+        this.token = token;
+        this.refreshToken = refreshToken;
+        this.email = email;
+        this.roles = roles;
+        this.requiresRoleSelection = requiresRoleSelection;
+    }
 }

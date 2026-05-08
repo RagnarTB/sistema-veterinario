@@ -70,9 +70,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/externo/reniec/dni/**").permitAll()
-                        .requestMatchers("/error").permitAll() // Liberamos los mensajes de error
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**")
-                        .permitAll() // Liberamos Swagger UI
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/seleccionar-rol").hasAuthority("ROLE_PRE_AUTH")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(restAuthenticationEntryPoint)

@@ -27,10 +27,7 @@ public class Cliente {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long Id;
 
-    private String nombre;
-    private String apellido;
-    private String telefono;
-    private String dni;
+
     // "Un cliente tiene Muchos pacientes"
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true) // mappedBy = "cliente": Le dice a
                                                                                       // Spring "No crees una tabla
@@ -42,7 +39,7 @@ public class Cliente {
                                      // un Cliente de la base de datos, automáticamente se eliminarán todas sus
                                      // mascotas para no dejar "perritos huérfanos" en el sistema sin dueño.
 
-    private String email;
+
     @OneToOne
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;

@@ -78,7 +78,7 @@ public class ConsentimientoServicio {
         dto.setAceptadoPorCliente(consentimiento.getAceptadoPorCliente());
         dto.setCirugiaId(consentimiento.getCirugia().getId());
         dto.setClienteId(consentimiento.getCliente().getId());
-        dto.setClienteNombre(consentimiento.getCliente().getNombre() + " " + consentimiento.getCliente().getApellido());
+        dto.setClienteNombre(consentimiento.getCliente().getUsuario().getNombre() + " " + consentimiento.getCliente().getUsuario().getApellido());
         return dto;
     }
 }

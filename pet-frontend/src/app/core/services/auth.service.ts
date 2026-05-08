@@ -40,7 +40,20 @@ export class AuthService {
 
   login(dto: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, dto).pipe(
-      tap((res) => this.guardarSesion(res))
+      tap((res) => {
+        if (!res.requiresRoleSelection) {
+          this.guardarSesion(res);
+        } else {
+          // Guardar token temporal y lista de roles disponibles sin loguear aún
+          localStorage.setItem(TOKEN_KEY, res.token);
+          localStorage.setItem(REFRESH_KEY, res.refreshToken);
+          localStorage.setItem(EMAIL_KEY, res.email);
+          localStorage.setItem(ROLES_KEY, JSON.stringify(res.roles));
+          this._token.set(res.token);
+          this._email.set(res.email);
+          this._roles.set(res.roles as RolNombre[]);
+        }
+      })
     );
   }
 
@@ -74,6 +87,12 @@ export class AuthService {
 
   confirmarCuenta(token: string, password: string): Observable<MensajeResponse> {
     return this.http.post<MensajeResponse>(`${this.apiUrl}/confirmar-token`, { token, password });
+  }
+
+  seleccionarRol(rol: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/seleccionar-rol`, { rol }).pipe(
+      tap((res) => this.guardarSesion(res))
+    );
   }
 
   refreshToken(): Observable<AuthResponse> {

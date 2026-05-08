@@ -12,7 +12,7 @@ import com.veterinaria.modelos.Empleado;
 
 public interface EmpleadoRepositorio extends JpaRepository<Empleado, Long> {
 
-    boolean existsByDni(String dni);
+
 
     // Método solicitado para encontrar empleado por el email del usuario
     Optional<Empleado> findByUsuarioEmail(String email);
@@ -24,6 +24,6 @@ public interface EmpleadoRepositorio extends JpaRepository<Empleado, Long> {
     boolean existsBySedes_Id(Long sedeId);
 
     // Búsqueda unificada para la barra de búsqueda de empleados
-    Page<Empleado> findByNombreContainingIgnoreCaseOrApellidoContainingIgnoreCaseOrDniContaining(
+    Page<Empleado> findByUsuarioNombreContainingIgnoreCaseOrUsuarioApellidoContainingIgnoreCaseOrUsuarioDniContaining(
             String nombre, String apellido, String dni, Pageable pageable);
 }

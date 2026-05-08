@@ -73,7 +73,7 @@ public class AuthServicio {
         if (usuarioRepositorio.findByEmail(dto.getEmail()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email ya está registrado");
         }
-        if (clienteRepositorio.existsByDni(dto.getDni())) {
+        if (usuarioRepositorio.existsByDni(dto.getDni())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El DNI ya se encuentra registrado");
         }
 
@@ -86,17 +86,16 @@ public class AuthServicio {
         Usuario nuevoUsuario = new Usuario();
         nuevoUsuario.setEmail(dto.getEmail());
         nuevoUsuario.setPassword(passwordEncoder.encode(dto.getPassword())); // ya encriptada
+        nuevoUsuario.setNombre(dto.getNombre());
+        nuevoUsuario.setApellido(dto.getApellido());
+        nuevoUsuario.setDni(dto.getDni());
+        nuevoUsuario.setTelefono(dto.getTelefono());
         nuevoUsuario.getRoles().add(rolCliente); // AQUI: Le asignamos el rol encontrado
 
         Usuario usuarioGuardado = usuarioRepositorio.save(nuevoUsuario);
 
         // 4. Crear la ENTIDAD Cliente (no un DTO) y vincularla
         Cliente nuevoCliente = new Cliente();
-        nuevoCliente.setNombre(dto.getNombre());
-        nuevoCliente.setApellido(dto.getApellido());
-        nuevoCliente.setDni(dto.getDni());
-        nuevoCliente.setTelefono(dto.getTelefono());
-        nuevoCliente.setEmail(dto.getEmail());
         nuevoCliente.setUsuario(usuarioGuardado); // AQUI: Magia relacional
 
         clienteRepositorio.save(nuevoCliente); // AQUI: Faltaba guardarlo
@@ -115,12 +114,21 @@ public class AuthServicio {
                 .loadUserByUsername(dto.getEmail());
 
         // 3. Embebemos los roles como claim en el JWT para que el frontend los lea
-        java.util.List<String> roles = userDetails.getAuthorities().stream()
+        java.util.List<String> rolesDisponibles = userDetails.getAuthorities().stream()
                 .map(auth -> auth.getAuthority())
                 .collect(java.util.stream.Collectors.toList());
 
         java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
-        extraClaims.put("roles", roles);
+        
+        boolean requiresRoleSelection = rolesDisponibles.size() > 1;
+        java.util.List<String> rolesToken;
+        if (requiresRoleSelection) {
+            rolesToken = java.util.Collections.singletonList("ROLE_PRE_AUTH");
+        } else {
+            rolesToken = rolesDisponibles;
+        }
+        
+        extraClaims.put("roles", rolesToken);
 
         String token = jwtServicio.generarToken(extraClaims, userDetails);
 
@@ -129,8 +137,7 @@ public class AuthServicio {
 
         String refreshToken = refreshTokenServicio.crearRefreshTokenParaUsuario(usuario);
 
-        // 4. Devolvemos la llave al Frontend (incluimos roles para que el sidebar los use)
-        return new AuthResponseDTO(token, refreshToken, dto.getEmail(), roles);
+        return new AuthResponseDTO(token, refreshToken, dto.getEmail(), rolesDisponibles, requiresRoleSelection);
     }
 
     @Transactional
@@ -198,7 +205,10 @@ public class AuthServicio {
             Usuario usuario = cliente.getUsuario();
             if (usuario == null) {
                 usuario = new Usuario();
-                usuario.setEmail(cliente.getEmail());
+                usuario.setNombre("");
+                usuario.setApellido("");
+                usuario.setDni("");
+                usuario.setTelefono("");
                 Rol rolCliente = rolRespositorio.findByNombre("ROLE_CLIENTE")
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "El rol ROLE_CLIENTE no existe en la BD"));
                 usuario.getRoles().add(rolCliente);
@@ -258,24 +268,32 @@ public class AuthServicio {
             if (usuario.getActivo()) {
                 // Loguear usando los mismos métodos que en login
                 org.springframework.security.core.userdetails.UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-                java.util.List<String> roles = userDetails.getAuthorities().stream()
+                java.util.List<String> rolesDisponibles = userDetails.getAuthorities().stream()
                         .map(auth -> auth.getAuthority())
                         .collect(java.util.stream.Collectors.toList());
 
                 java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
-                extraClaims.put("roles", roles);
+                
+                boolean requiresRoleSelection = rolesDisponibles.size() > 1;
+                java.util.List<String> rolesToken;
+                if (requiresRoleSelection) {
+                    rolesToken = java.util.Collections.singletonList("ROLE_PRE_AUTH");
+                } else {
+                    rolesToken = rolesDisponibles;
+                }
+                
+                extraClaims.put("roles", rolesToken);
 
                 String token = jwtServicio.generarToken(extraClaims, userDetails);
                 String refreshToken = refreshTokenServicio.crearRefreshTokenParaUsuario(usuario);
 
-                return new AuthResponseDTO(token, refreshToken, email, roles);
+                return new AuthResponseDTO(token, refreshToken, email, rolesDisponibles, requiresRoleSelection);
             } else {
                 // Usuario existe pero inactivo (Falta Completar Registro)
-                Cliente c = usuario.getCliente();
-                if (c != null && c.getNombre() == null) {
-                    c.setNombre((String) payload.get("given_name"));
-                    c.setApellido((String) payload.get("family_name"));
-                    clienteRepositorio.save(c);
+                if (usuario.getNombre() == null) {
+                    usuario.setNombre((String) payload.get("given_name"));
+                    usuario.setApellido((String) payload.get("family_name"));
+                    usuarioRepositorio.save(usuario);
                 }
 
                 java.util.Map<String, Object> registroRequerido = new java.util.HashMap<>();
@@ -297,13 +315,14 @@ public class AuthServicio {
             nuevoUsuario.setGoogleSubject(payload.getSubject());
             nuevoUsuario.setGoogleVinculado(true);
             nuevoUsuario.setActivo(false);
+            nuevoUsuario.setNombre((String) payload.get("given_name"));
+            nuevoUsuario.setApellido((String) payload.get("family_name"));
+            nuevoUsuario.setDni("");
+            nuevoUsuario.setTelefono("");
             nuevoUsuario.getRoles().add(rolCliente);
             usuarioRepositorio.save(nuevoUsuario);
 
             Cliente nuevoCliente = new Cliente();
-            nuevoCliente.setEmail(email);
-            nuevoCliente.setNombre((String) payload.get("given_name"));
-            nuevoCliente.setApellido((String) payload.get("family_name"));
             nuevoCliente.setUsuario(nuevoUsuario);
             nuevoCliente.setActivo(false);
             clienteRepositorio.save(nuevoCliente);
@@ -341,12 +360,15 @@ public class AuthServicio {
             nuevoUsuario.setEmail(dto.getEmail());
             nuevoUsuario.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
             nuevoUsuario.setActivo(false);
+            nuevoUsuario.setNombre("");
+            nuevoUsuario.setApellido("");
+            nuevoUsuario.setDni("");
+            nuevoUsuario.setTelefono("");
             nuevoUsuario.getRoles().add(rolCliente);
             Usuario usuarioGuardado = usuarioRepositorio.save(nuevoUsuario);
 
             // Crear cliente inactivo
             cliente = new Cliente();
-            cliente.setEmail(dto.getEmail());
             cliente.setUsuario(usuarioGuardado);
             cliente.setActivo(false);
             clienteRepositorio.save(cliente);
@@ -402,35 +424,73 @@ public class AuthServicio {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email no coincide con el token");
         }
 
-        // Validar si el DNI que intentan guardar YA pertenece a OTRO cliente
-        java.util.Optional<Cliente> clienteDni = clienteRepositorio.findByDni(dto.getDni());
-        if (clienteDni.isPresent() && !clienteDni.get().getId().equals(cliente.getId())) {
+        // Validar si el DNI que intentan guardar YA pertenece a OTRO usuario
+        java.util.Optional<Usuario> usuarioDni = usuarioRepositorio.findByDni(dto.getDni());
+        if (usuarioDni.isPresent() && !usuarioDni.get().getId().equals(usuario.getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El DNI ya se encuentra registrado por otro usuario");
         }
 
         // Actualizar el cliente
-        cliente.setNombre(dto.getNombre());
-        cliente.setApellido(dto.getApellido());
-        cliente.setDni(dto.getDni());
-        cliente.setTelefono(dto.getTelefono());
         cliente.setActivo(true);
         clienteRepositorio.save(cliente);
 
+        usuario.setNombre(dto.getNombre());
+        usuario.setApellido(dto.getApellido());
+        usuario.setDni(dto.getDni());
+        usuario.setTelefono(dto.getTelefono());
         usuario.setActivo(true);
         usuarioRepositorio.save(usuario);
 
         // Generar JWT
         org.springframework.security.core.userdetails.UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-        java.util.List<String> roles = userDetails.getAuthorities().stream()
+        java.util.List<String> rolesDisponibles = userDetails.getAuthorities().stream()
                 .map(auth -> auth.getAuthority())
                 .collect(java.util.stream.Collectors.toList());
 
         java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
-        extraClaims.put("roles", roles);
+        
+        boolean requiresRoleSelection = rolesDisponibles.size() > 1;
+        java.util.List<String> rolesToken;
+        if (requiresRoleSelection) {
+            rolesToken = java.util.Collections.singletonList("ROLE_PRE_AUTH");
+        } else {
+            rolesToken = rolesDisponibles;
+        }
+        
+        extraClaims.put("roles", rolesToken);
 
         String tokenJwt = jwtServicio.generarToken(extraClaims, userDetails);
         String refreshToken = refreshTokenServicio.crearRefreshTokenParaUsuario(usuario);
 
-        return new AuthResponseDTO(tokenJwt, refreshToken, email, roles);
+        return new AuthResponseDTO(tokenJwt, refreshToken, email, rolesDisponibles, requiresRoleSelection);
+    }
+
+    @Transactional
+    public AuthResponseDTO seleccionarRol(String email, String rolSeleccionado) {
+        Usuario usuario = usuarioRepositorio.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        // Verificar que el rol elegido realmente le pertenece al usuario
+        boolean tieneRol = usuario.getRoles().stream()
+                .anyMatch(r -> r.getNombre().equals(rolSeleccionado));
+
+        if (!tieneRol) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El usuario no posee el rol seleccionado: " + rolSeleccionado);
+        }
+
+        // Emitir token con SÓLO el rol elegido
+        java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+        extraClaims.put("roles", java.util.Collections.singletonList(rolSeleccionado));
+
+        org.springframework.security.core.userdetails.UserDetails userDetails =
+                userDetailsService.loadUserByUsername(email);
+        String token = jwtServicio.generarToken(extraClaims, userDetails);
+        String refreshToken = refreshTokenServicio.crearRefreshTokenParaUsuario(usuario);
+
+        java.util.List<String> todosMisRoles = usuario.getRoles().stream()
+                .map(Rol::getNombre)
+                .collect(java.util.stream.Collectors.toList());
+
+        return new AuthResponseDTO(token, refreshToken, email, java.util.Collections.singletonList(rolSeleccionado));
     }
 }

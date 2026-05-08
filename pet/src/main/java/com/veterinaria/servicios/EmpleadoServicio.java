@@ -52,18 +52,28 @@ public class EmpleadoServicio {
 
     @Transactional
     public EmpleadoResponseDTO guardar(EmpleadoRequestDTO dto) {
-        if (empleadoRepositorio.existsByDni(dto.getDni())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe un empleado con este DNI");
-        }
 
-        Usuario usuarioGuardado;
-        Optional<Usuario> usuarioOpt = usuarioRepositorio.findByEmail(dto.getEmail());
-        if (usuarioOpt.isPresent()) {
-            Usuario u = usuarioOpt.get();
+        Usuario usuarioGuardado = null;
+        Optional<Usuario> usuarioPorDni = usuarioRepositorio.findByDni(dto.getDni());
+
+        if (usuarioPorDni.isPresent()) {
+            Usuario u = usuarioPorDni.get();
             if (u.getEmpleado() != null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe un empleado con este email");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe un empleado con este DNI");
             }
-            // Si el usuario existe (es cliente), solo se agregan roles
+            // Actualizar datos del usuario existente (ej. si era solo cliente)
+            u.setNombre(dto.getNombre());
+            u.setApellido(dto.getApellido());
+            u.setTelefono(dto.getTelefono());
+            if (dto.getEmail() != null && !dto.getEmail().isEmpty()) {
+                // Verificar si el nuevo email ya lo usa otro
+                Optional<Usuario> uEmail = usuarioRepositorio.findByEmail(dto.getEmail());
+                if (uEmail.isPresent() && !uEmail.get().getId().equals(u.getId())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro usuario con este email");
+                }
+                u.setEmail(dto.getEmail());
+            }
+
             for (String nombreRol : dto.getRoles()) {
                 Rol rol = rolRepositorio.findByNombre(nombreRol)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rol no encontrado: " + nombreRol));
@@ -71,12 +81,20 @@ public class EmpleadoServicio {
             }
             usuarioGuardado = usuarioRepositorio.save(u);
         } else {
+            // Verificar si el email ya existe en otro lado
+            if (usuarioRepositorio.findByEmail(dto.getEmail()).isPresent()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe un usuario con este email");
+            }
+
             // Usuario nuevo
             Usuario usuario = new Usuario();
             usuario.setEmail(dto.getEmail());
-            // Contraseña inútil hasta que lo active
             usuario.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
             usuario.setActivo(false); 
+            usuario.setNombre(dto.getNombre());
+            usuario.setApellido(dto.getApellido());
+            usuario.setDni(dto.getDni());
+            usuario.setTelefono(dto.getTelefono());
             
             Set<Rol> rolesAsignados = new HashSet<>();
             for (String nombreRol : dto.getRoles()) {
@@ -95,11 +113,8 @@ public class EmpleadoServicio {
         Set<Sede> sedes = new HashSet<>(sedesLista);
 
         Empleado empleado = new Empleado();
-        empleado.setNombre(dto.getNombre());
-        empleado.setApellido(dto.getApellido());
-        empleado.setDni(dto.getDni());
-        empleado.setTelefono(dto.getTelefono());
         empleado.setEspecialidad(dto.getEspecialidad());
+        empleado.setNumeroColegiatura(dto.getNumeroColegiatura());
         empleado.setSueldoBase(dto.getSueldoBase());
         empleado.setSedes(sedes);
         empleado.setUsuario(usuarioGuardado);
@@ -125,7 +140,7 @@ public class EmpleadoServicio {
     public Page<EmpleadoResponseDTO> listarTodos(String buscar, Pageable pageable) {
         Page<Empleado> pagina;
         if (buscar != null && !buscar.trim().isEmpty()) {
-            pagina = empleadoRepositorio.findByNombreContainingIgnoreCaseOrApellidoContainingIgnoreCaseOrDniContaining(
+            pagina = empleadoRepositorio.findByUsuarioNombreContainingIgnoreCaseOrUsuarioApellidoContainingIgnoreCaseOrUsuarioDniContaining(
                     buscar, buscar, buscar, pageable);
         } else {
             pagina = empleadoRepositorio.findAll(pageable);
@@ -144,22 +159,40 @@ public class EmpleadoServicio {
         Empleado empleado = empleadoRepositorio.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Empleado no encontrado con ID: " + id));
 
-        if (!empleado.getDni().equals(dto.getDni()) && empleadoRepositorio.existsByDni(dto.getDni())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro empleado con este DNI");
+        Usuario usuario = empleado.getUsuario();
+        
+        if (!usuario.getDni().equals(dto.getDni()) && usuarioRepositorio.existsByDni(dto.getDni())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro usuario con este DNI");
         }
 
-        Usuario usuario = empleado.getUsuario();
         if (!usuario.getEmail().equals(dto.getEmail()) && usuarioRepositorio.findByEmail(dto.getEmail()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro usuario con este email");
         }
 
         usuario.setEmail(dto.getEmail());
+        usuario.setNombre(dto.getNombre());
+        usuario.setApellido(dto.getApellido());
+        usuario.setDni(dto.getDni());
+        usuario.setTelefono(dto.getTelefono());
+
+        // Actualizar roles
         Set<Rol> rolesAsignados = new HashSet<>();
+        boolean mantuvoRolCliente = false;
+        
+        // Revisar si ya era cliente para no quitarle el rol de CLIENTE inadvertidamente
+        for (Rol r : usuario.getRoles()) {
+            if (r.getNombre().equals("ROLE_CLIENTE")) {
+                rolesAsignados.add(r);
+                mantuvoRolCliente = true;
+            }
+        }
+
         for (String nombreRol : dto.getRoles()) {
             Rol rol = rolRepositorio.findByNombre(nombreRol)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rol no encontrado: " + nombreRol));
             rolesAsignados.add(rol);
         }
+        
         usuario.setRoles(rolesAsignados);
         usuarioRepositorio.save(usuario);
 
@@ -169,11 +202,8 @@ public class EmpleadoServicio {
         }
         Set<Sede> sedes = new HashSet<>(sedesLista);
 
-        empleado.setNombre(dto.getNombre());
-        empleado.setApellido(dto.getApellido());
-        empleado.setDni(dto.getDni());
-        empleado.setTelefono(dto.getTelefono());
         empleado.setEspecialidad(dto.getEspecialidad());
+        empleado.setNumeroColegiatura(dto.getNumeroColegiatura());
         empleado.setSueldoBase(dto.getSueldoBase());
         empleado.setSedes(sedes);
 
@@ -231,11 +261,12 @@ public class EmpleadoServicio {
                 empleado.getUsuario().getId(),
                 empleado.getUsuario().getEmail(),
                 rolesNombres,
-                empleado.getNombre(),
-                empleado.getApellido(),
-                empleado.getDni(),
-                empleado.getTelefono(),
+                empleado.getUsuario().getNombre(),
+                empleado.getUsuario().getApellido(),
+                empleado.getUsuario().getDni(),
+                empleado.getUsuario().getTelefono(),
                 empleado.getEspecialidad(),
+                empleado.getNumeroColegiatura(),
                 empleado.getSueldoBase(),
                 empleado.getActivo(),
                 sedeIds,

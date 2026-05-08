@@ -64,6 +64,10 @@ public class PetApplication {
 
 				// Crear Usuario
 				Usuario adminUsuario = new Usuario();
+				adminUsuario.setNombre("Administrador");
+				adminUsuario.setApellido("Sistema");
+				adminUsuario.setDni("00000000"); // DNI ficticio
+				adminUsuario.setTelefono("999999999");
 				adminUsuario.setEmail("admin@veterinaria.com");
 				adminUsuario.setPassword(passwordEncoder.encode("admin123"));
 				adminUsuario.setActivo(true);
@@ -74,10 +78,6 @@ public class PetApplication {
 
 				// Crear Empleado asociado
 				Empleado adminEmpleado = new Empleado();
-				adminEmpleado.setNombre("Administrador");
-				adminEmpleado.setApellido("Sistema");
-				adminEmpleado.setDni("00000000"); // DNI ficticio
-				adminEmpleado.setTelefono("999999999");
 				adminEmpleado.setSueldoBase(new BigDecimal("3000.00"));
 				adminEmpleado.setActivo(true);
 				adminEmpleado.setUsuario(adminUsuario);

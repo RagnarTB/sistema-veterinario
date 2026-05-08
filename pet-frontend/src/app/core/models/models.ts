@@ -18,7 +18,8 @@ export type RolNombre =
   | 'ROLE_ADMIN'
   | 'ROLE_VETERINARIO'
   | 'ROLE_RECEPCIONISTA'
-  | 'ROLE_CLIENTE';
+  | 'ROLE_CLIENTE'
+  | 'ROLE_PRE_AUTH';
 
 // =============================================
 // AUTH
@@ -32,7 +33,8 @@ export interface AuthResponse {
   token: string;
   refreshToken: string;
   email: string;
-  roles: string[];      // ROLE_ADMIN, ROLE_VETERINARIO, etc.
+  roles: string[];
+  requiresRoleSelection: boolean;
 }
 
 export interface RefreshTokenRequest {
@@ -162,6 +164,7 @@ export interface EmpleadoRequest {
   dni: string;
   telefono: string;
   especialidad?: string;
+  numeroColegiatura?: string;
   sueldoBase?: number;
   sedeIds: number[];
 }
@@ -176,10 +179,23 @@ export interface EmpleadoResponse {
   dni: string;
   telefono: string;
   especialidad?: string;
+  numeroColegiatura?: string;
   sueldoBase?: number;
   activo: boolean;
   sedeIds: number[];
   sedeNombres: string[];
+}
+
+// =============================================
+// VALIDACION COLEGIATURA
+// =============================================
+export interface ColegiaturaValidacion {
+  numeroColegiatura: string;
+  nombreCompleto?: string;
+  estado?: string;
+  habilitado: boolean;
+  fechaValidacion?: string;
+  error?: string;
 }
 
 // =============================================

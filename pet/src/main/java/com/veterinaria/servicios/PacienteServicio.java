@@ -112,7 +112,7 @@ public class PacienteServicio {
                                 paciente.getRaza(),
                                 paciente.getFechaNacimiento(),
                                 paciente.getCliente().getId(),
-                                paciente.getCliente().getNombre() + " " + paciente.getCliente().getApellido(),
+                                paciente.getCliente().getUsuario().getNombre() + " " + paciente.getCliente().getUsuario().getApellido(),
                                 paciente.getActivo());
         }
 }

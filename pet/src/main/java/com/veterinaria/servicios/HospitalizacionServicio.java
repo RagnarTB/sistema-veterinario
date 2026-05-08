@@ -146,7 +146,7 @@ public class HospitalizacionServicio {
         dto.setJaulaId(hospitalizacion.getJaula().getId());
         dto.setJaulaNumero(hospitalizacion.getJaula().getNumero());
         dto.setEmpleadoId(hospitalizacion.getEmpleado().getId());
-        dto.setEmpleadoNombre(hospitalizacion.getEmpleado().getNombre() + " " + hospitalizacion.getEmpleado().getApellido());
+        dto.setEmpleadoNombre(hospitalizacion.getEmpleado().getUsuario().getNombre() + " " + hospitalizacion.getEmpleado().getUsuario().getApellido());
         return dto;
     }
 }

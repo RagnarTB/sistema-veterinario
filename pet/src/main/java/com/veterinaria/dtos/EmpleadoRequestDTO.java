@@ -36,6 +36,8 @@ public class EmpleadoRequestDTO {
 
     private String especialidad;
 
+    private String numeroColegiatura;
+
     private BigDecimal sueldoBase;
 
     @NotEmpty(message = "Debe asignar al menos una sede al empleado")
