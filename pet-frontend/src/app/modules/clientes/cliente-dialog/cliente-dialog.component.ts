@@ -25,20 +25,24 @@ import { MatIconModule } from '@angular/material/icon';
     MatSnackBarModule
   ],
   template: `
+    <!-- El título cambia dependiendo del paso -->
     <h2 mat-dialog-title class="dialog-title">
       <span class="material-icons-round">
-        {{ isEdit ? 'edit' : 'person_add' }}
+        {{ pasoActual === 1 ? (isEdit ? 'edit' : 'person_add') : 'verified' }}
       </span>
-      {{ isEdit ? 'Editar Cliente' : 'Nuevo Cliente' }}
+      {{ pasoActual === 1 ? (isEdit ? 'Editar Cliente' : 'Nuevo Cliente') : 'Confirmar Datos' }}
     </h2>
-    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+    <!-- ===================================== -->
+    <!-- PASO 1: EL FORMULARIO                 -->
+    <!-- ===================================== -->
+    <form [formGroup]="form" *ngIf="pasoActual === 1">
       <mat-dialog-content class="dialog-content-scroll">
         <p class="dialog-subtitle">
           {{ isEdit ? 'Modifica los datos del cliente a continuación.' : 'Ingresa los datos personales para registrar al nuevo cliente.' }}
         </p>
 
         <div class="form-grid">
-          <!-- Modificado para poner DNI a la cabeza en 2 columnas y el botón fuera -->
           <div class="dni-search-container col-span-2">
             <mat-form-field appearance="outline" class="dni-field">
               <mat-label>DNI / Documento</mat-label>
@@ -73,7 +77,7 @@ import { MatIconModule } from '@angular/material/icon';
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Teléfono</mat-label>
             <mat-icon matPrefix class="prefix-icon">phone</mat-icon>
-            <input matInput formControlName="telefono" placeholder="Ej. 987654321" required  maxlength="9"/>
+            <input matInput formControlName="telefono" placeholder="Ej. 987654321" required maxlength="9"/>
             <mat-error *ngIf="form.get('telefono')?.hasError('required')">El teléfono es obligatorio</mat-error>
             <mat-error *ngIf="form.get('telefono')?.hasError('pattern')">Debe tener exactamente 9 dígitos numéricos</mat-error>
           </mat-form-field>
@@ -95,11 +99,40 @@ import { MatIconModule } from '@angular/material/icon';
       </mat-dialog-content>
       <mat-dialog-actions align="end" class="dialog-actions">
         <button mat-stroked-button type="button" (click)="onCancel()" class="btn-cancel">Cancelar</button>
-        <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || isSubmitting">
-          {{ isEdit ? 'Guardar Cambios' : 'Registrar Cliente' }}
+        <!-- NOTA: Ahora llama a irAResumen() en lugar de hacer submit -->
+        <button mat-flat-button color="primary" type="button" (click)="irAResumen()" [disabled]="form.invalid || isSubmitting">
+          Continuar
         </button>
       </mat-dialog-actions>
     </form>
+
+    <!-- ===================================== -->
+    <!-- PASO 2: EL RESUMEN DE CONFIRMACIÓN    -->
+    <!-- ===================================== -->
+    <div *ngIf="pasoActual === 2">
+      <mat-dialog-content class="dialog-content-scroll">
+        <p class="dialog-subtitle">Verifica que los datos sean correctos antes de guardarlos en el sistema.</p>
+        
+        <div class="resumen-box">
+          <p><strong>DNI:</strong> {{ datosResumen?.dni }}</p>
+          <p><strong>Nombres:</strong> {{ datosResumen?.nombre }} {{ datosResumen?.apellido }}</p>
+          <p><strong>Teléfono:</strong> {{ datosResumen?.telefono }}</p>
+          <p><strong>Correo:</strong> {{ datosResumen?.email }}</p>
+          <p><strong>Dirección:</strong> {{ datosResumen?.direccion || 'No especificada' }}</p>
+        </div>
+      </mat-dialog-content>
+
+      <mat-dialog-actions align="end" class="dialog-actions">
+        <!-- Botón para regresar -->
+        <button mat-stroked-button type="button" (click)="regresarAEditar()" class="btn-cancel">
+          Regresar a editar
+        </button>
+        <!-- Botón final de guardado -->
+        <button mat-flat-button color="primary" type="button" (click)="confirmarYGuardar()" [disabled]="isSubmitting">
+          <mat-icon style="margin-right: 4px;">save</mat-icon> Confirmar
+        </button>
+      </mat-dialog-actions>
+    </div>
   `,
   styles: [`
     .dialog-title {
@@ -135,6 +168,22 @@ import { MatIconModule } from '@angular/material/icon';
       .form-grid { grid-template-columns: 1fr; }
       .col-span-2 { grid-column: span 1; }
     }
+
+    .resumen-box {
+    background-color: rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-color, #e0e0e0);
+    padding: 16px 24px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .resumen-box p {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+  }
   `]
 })
 export class ClienteDialogComponent implements OnInit {
@@ -142,6 +191,8 @@ export class ClienteDialogComponent implements OnInit {
   isEdit = false;
   isSubmitting = false;
   buscandoDni = false;
+  pasoActual = 1;
+  datosResumen: any = null
 
   constructor(
     private fb: FormBuilder,
@@ -155,11 +206,11 @@ export class ClienteDialogComponent implements OnInit {
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      nombre: [{value: this.data?.nombre || '', disabled: this.isEdit}, Validators.required,],
-      apellido: [{value: this.data?.apellido || '', disabled: this.isEdit}, Validators.required],
-      dni: [{value: this.data?.dni || '', disabled: this.isEdit}, [Validators.required, Validators.pattern('^[0-9]{8}$')]],
+      nombre: [{ value: this.data?.nombre || '', disabled: this.isEdit }, Validators.required,],
+      apellido: [{ value: this.data?.apellido || '', disabled: this.isEdit }, Validators.required],
+      dni: [{ value: this.data?.dni || '', disabled: this.isEdit }, [Validators.required, Validators.pattern('^[0-9]{8}$')]],
       telefono: [this.data?.telefono || '', [Validators.required, Validators.pattern('^[0-9]{9}$')]],
-      email: [{value: this.data?.email || '', disabled: this.isEdit}, [Validators.required, Validators.email]],
+      email: [{ value: this.data?.email || '', disabled: this.isEdit }, [Validators.required, Validators.email]],
       direccion: [(this.data as any)?.direccion || '']
     });
   }
@@ -192,14 +243,20 @@ export class ClienteDialogComponent implements OnInit {
     });
   }
 
-    // Si estamos editando y el email / dni se usa para login, a veces no se debería poder editar, 
-    // pero lo dejamos habilitado a menos que el backend lo restrinja.
 
-  onSubmit(): void {
+  irAResumen(): void {
     if (this.form.valid) {
-      const result: ClienteRequest = this.form.getRawValue();
-      this.dialogRef.close(result);
+      this.datosResumen = this.form.getRawValue();
+      this.pasoActual = 2;
     }
+  }
+
+  regresarAEditar(): void {
+    this.pasoActual = 1;
+  }
+
+  confirmarYGuardar(): void {
+    this.dialogRef.close(this.datosResumen);
   }
 
   onCancel(): void {

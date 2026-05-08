@@ -128,7 +128,7 @@ export interface PacienteRequest {
 export interface PacienteResponse {
   id: number;
   nombre: string;
-  especie: string;
+  especieNombre: string;
   raza?: string;
   fechaNacimiento?: string;
   sexo?: string;

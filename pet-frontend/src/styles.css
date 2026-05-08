@@ -824,3 +824,10 @@ tbody td {
 .mb-lg {
   margin-bottom: var(--space-lg);
 }
+
+
+/* Aquí debajo debes tener las reglas de z-index que agregamos antes: */
+.cdk-global-overlay-wrapper,
+.cdk-overlay-container {
+  z-index: 99999 !important;
+}

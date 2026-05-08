@@ -95,7 +95,7 @@ import { EspeciesDialogComponent } from './especies-dialog/especies-dialog.compo
                   </div>
                   <div class="user-info">
                     <span class="user-name">{{ element.nombre }}</span>
-                    <span class="user-doc">{{ element.especie }} {{ element.raza ? ' - '+element.raza : '' }}</span>
+                    <span class="user-doc">{{ element.especieNombre }} {{ element.raza ? ' - '+element.raza : '' }}</span>
                   </div>
                 </div>
               </td>
