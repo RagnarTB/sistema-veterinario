@@ -9,9 +9,10 @@ export class PacienteService {
   private url = `${environment.apiUrl}/pacientes`;
   constructor(private http: HttpClient) {}
 
-  listar(page = 0, size = 10, buscar = ''): Observable<Page<PacienteResponse>> {
+  listar(page = 0, size = 10, buscar = '', estado: boolean | null = true): Observable<Page<PacienteResponse>> {
     let params = new HttpParams().set('page', page).set('size', size);
     if (buscar) params = params.set('buscar', buscar);
+    if (estado !== null) params = params.set('estado', estado);
     return this.http.get<Page<PacienteResponse>>(this.url, { params });
   }
 

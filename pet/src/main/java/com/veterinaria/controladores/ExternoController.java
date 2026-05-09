@@ -43,6 +43,7 @@ public class ExternoController {
             com.veterinaria.modelos.Usuario u = userOpt.get();
             data.setExisteEnBd(true);
             data.setEmail(u.getEmail());
+            data.setTelefono(u.getTelefono());
             // Sobrescribimos o asignamos el nombre del sistema
             data.setFirstName(u.getNombre());
             data.setFirstLastName(u.getApellido());

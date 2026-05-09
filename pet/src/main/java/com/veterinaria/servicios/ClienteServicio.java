@@ -38,7 +38,7 @@ public class ClienteServicio {
 
         com.veterinaria.modelos.Usuario usuario = usuarioRepositorio.findByDni(dto.getDni()).orElse(null);
         if (usuario != null && usuario.getCliente() != null) {
-            throw new RuntimeException("El DNI ya se encuentra registrado como cliente");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El DNI proporcionado ya está registrado como cliente.");
         }
 
         if (usuario == null) {
@@ -88,12 +88,12 @@ public class ClienteServicio {
         return respuesta;
     }
 
-    public Page<ClienteResponseDTO> listarTodos(String buscar, Pageable pageable) {
+    public Page<ClienteResponseDTO> listarTodos(String buscar, Boolean estado, Pageable pageable) {
         Page<Cliente> pagina;
         if (buscar != null && !buscar.trim().isEmpty()) {
-            pagina = clienteRepositorio.buscarClientesConRol(buscar, pageable);
+            pagina = clienteRepositorio.buscarClientesConRol(buscar, estado, pageable);
         } else {
-            pagina = clienteRepositorio.findAllConRol(pageable);
+            pagina = clienteRepositorio.findAllConRol(estado, pageable);
         }
 
         return pagina.map(cliente -> {

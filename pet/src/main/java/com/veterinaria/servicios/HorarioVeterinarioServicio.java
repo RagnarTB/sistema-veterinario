@@ -31,12 +31,28 @@ public class HorarioVeterinarioServicio {
     }
 
     public HorarioVeterinarioResponseDTO guardar(HorarioVeterinarioRequestDTO dto) {
-        // Validar que el doctor exista
+        // Validar que el doctor exista, esté activo y sea veterinario
         Empleado veterinario = empleadoRepositorio.findById(dto.getVeterinarioId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinario no encontrado"));
 
+        if (!veterinario.getActivo()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El veterinario no se encuentra activo");
+        }
+
+        boolean esVeterinario = veterinario.getUsuario().getRoles().stream()
+                .anyMatch(r -> r.getNombre().equals("ROLE_VETERINARIO"));
+        if (!esVeterinario) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El empleado seleccionado no es un veterinario");
+        }
+
         Sede sede = sedeRepositorio.findById(dto.getSedeId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
+
+        // Validar que el veterinario pertenezca a la sede
+        boolean perteneceSede = veterinario.getSedes().stream().anyMatch(s -> s.getId().equals(sede.getId()));
+        if (!perteneceSede) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El veterinario no pertenece a la sede seleccionada");
+        }
 
         // Validar que no tenga ya un horario asignado para ese mismo día EN ESA SEDE
         if (horarioRepositorio.findByVeterinarioIdAndDiaSemanaAndSedeId(dto.getVeterinarioId(), dto.getDiaSemana(), dto.getSedeId())

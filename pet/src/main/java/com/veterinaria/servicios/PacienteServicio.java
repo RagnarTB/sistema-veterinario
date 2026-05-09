@@ -53,12 +53,12 @@ public class PacienteServicio {
                 return mapearAResponse(pacienteGuardado);
         }
 
-        public Page<PacienteResponseDTO> listarTodos(String buscar, Pageable pageable) {
+        public Page<PacienteResponseDTO> listarTodos(String buscar, Boolean estado, Pageable pageable) {
                 Page<Paciente> pagina;
                 if (buscar != null && !buscar.trim().isEmpty()) {
-                        pagina = pacienteRepositorio.findByNombreContainingIgnoreCase(buscar, pageable);
+                        pagina = pacienteRepositorio.buscarPacientes(buscar, estado, pageable);
                 } else {
-                        pagina = pacienteRepositorio.findAll(pageable);
+                        pagina = pacienteRepositorio.findAllConFiltro(estado, pageable);
                 }
                 return pagina.map(this::mapearAResponse);
         }

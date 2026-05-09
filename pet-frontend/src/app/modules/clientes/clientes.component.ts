@@ -13,6 +13,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
 
 import { ClienteService } from '../../core/services/cliente.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -36,7 +37,8 @@ import { ClienteDialogComponent } from './cliente-dialog/cliente-dialog.componen
     MatProgressSpinnerModule,
     MatTooltipModule,
     MatDialogModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatTabsModule
   ],
   template: `
     <div class="page-container fade-in-up">
@@ -65,6 +67,13 @@ import { ClienteDialogComponent } from './cliente-dialog/cliente-dialog.componen
           }
         </mat-form-field>
       </div>
+
+      <!-- Filtros por Pestañas -->
+      <mat-tab-group class="custom-tabs" (selectedIndexChange)="onTabChange($event)">
+        <mat-tab label="Activos"></mat-tab>
+        <mat-tab label="Inactivos"></mat-tab>
+        <mat-tab label="Todos"></mat-tab>
+      </mat-tab-group>
 
       <!-- Tabla principal -->
       <div class="table-card premium-card">
@@ -208,6 +217,7 @@ export class ClientesComponent implements OnInit {
   pageSize = signal(10);
   pageIndex = signal(0);
   loading = signal(false);
+  estadoActual = signal<boolean | null>(true); // true: Activos, false: Inactivos, null: Todos
 
   searchControl = new FormControl('');
   isAdmin = this.authService.isAdmin();
@@ -227,7 +237,9 @@ export class ClientesComponent implements OnInit {
     this.loading.set(true);
     const search = this.searchControl.value || '';
     
-    this.clienteService.listar(this.pageIndex(), this.pageSize(), search).subscribe({
+    // Suponiendo que tu servicio ha sido actualizado para recibir el estado
+    // this.clienteService.listar(this.pageIndex(), this.pageSize(), search, this.estadoActual())
+    this.clienteService.listar(this.pageIndex(), this.pageSize(), search, this.estadoActual()).subscribe({
       next: (pageData) => {
         this.dataSource.set(pageData.content);
         this.totalElements.set(pageData.totalElements);
@@ -238,6 +250,18 @@ export class ClientesComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  onTabChange(index: number) {
+    if (index === 0) {
+      this.estadoActual.set(true);
+    } else if (index === 1) {
+      this.estadoActual.set(false);
+    } else {
+      this.estadoActual.set(null);
+    }
+    this.pageIndex.set(0);
+    this.cargarClientes();
   }
 
   onPageChange(event: PageEvent) {

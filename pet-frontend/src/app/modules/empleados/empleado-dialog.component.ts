@@ -10,12 +10,17 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatTabsModule } from '@angular/material/tabs';
 
 import { EmpleadoService } from '../../core/services/empleado.service';
 import { SedeService } from '../../core/services/sede.service';
 import { RolService } from '../../core/services/rol.service';
 import { ExternoService } from '../../core/services/externo.service';
 import { ColegiaturaService } from '../../core/services/colegiatura.service';
+import { HorariosVeterinarioComponent } from './horarios-veterinario.component';
+import { DiasBloqueadosComponent } from './dias-bloqueados.component';
+import { HorarioService, HorarioVeterinarioResponse } from '../../core/services/horario.service';
+import { DiaBloqueadoService, DiaBloqueadoResponse } from '../../core/services/dia-bloqueado.service';
 import { EmpleadoResponse, SedeResponse, RolResponse, ColegiaturaValidacion } from '../../core/models/models';
 
 export interface EmpleadoDialogData {
@@ -35,7 +40,10 @@ export interface EmpleadoDialogData {
     MatProgressSpinnerModule,
     MatFormFieldModule,
     MatInputModule,
-    MatChipsModule
+    MatChipsModule,
+    MatTabsModule,
+    HorariosVeterinarioComponent,
+    DiasBloqueadosComponent
   ],
   template: `
     <!-- ===== PASO 1: FORMULARIO ===== -->
@@ -48,7 +56,30 @@ export interface EmpleadoDialogData {
       </h2>
 
       <mat-dialog-content class="dialog-content-scroll">
+        <mat-tab-group *ngIf="isEdit() && esVeterinarioGuardado(); else normalForm">
+          <mat-tab label="Datos Personales">
+            <ng-container *ngTemplateOutlet="formTemplate"></ng-container>
+          </mat-tab>
+          <mat-tab label="Horarios">
+            <!-- Sección de horarios, implementada en el componente hijo -->
+            <app-horarios-veterinario 
+              [veterinarioId]="data.empleado?.id || 0" 
+              [sedes]="sedes()">
+            </app-horarios-veterinario>
+          </mat-tab>
+          <mat-tab label="Días Bloqueados">
+            <!-- Sección de días bloqueados, implementada en el componente hijo -->
+            <app-dias-bloqueados 
+              [veterinarioId]="data.empleado?.id || 0">
+            </app-dias-bloqueados>
+          </mat-tab>
+        </mat-tab-group>
 
+        <ng-template #normalForm>
+          <ng-container *ngTemplateOutlet="formTemplate"></ng-container>
+        </ng-template>
+
+        <ng-template #formTemplate>
         <!-- BANNER: DNI ya pertenece a cliente -->
         @if (dniEsCliente()) {
           <div class="ascenso-banner">
@@ -191,6 +222,7 @@ export interface EmpleadoDialogData {
           }
 
         </form>
+        </ng-template>
       </mat-dialog-content>
 
       <mat-dialog-actions align="end" class="p-4">
@@ -345,6 +377,7 @@ export class EmpleadoDialogComponent implements OnInit {
   paso = signal<'formulario' | 'confirmacion'>('formulario');
   dniEsCliente = signal(false);
   esVeterinario = signal(false);
+  esVeterinarioGuardado = signal(false);
   validandoColegiatura = signal(false);
   colegiaturaResultado = signal<ColegiaturaValidacion | null>(null);
 
@@ -380,6 +413,7 @@ export class EmpleadoDialogComponent implements OnInit {
     // Verificar si ya es veterinario al editar
     if (this.isEdit() && data.empleado?.nombresRoles?.includes('ROLE_VETERINARIO')) {
       this.esVeterinario.set(true);
+      this.esVeterinarioGuardado.set(true);
     }
   }
 
@@ -409,11 +443,14 @@ export class EmpleadoDialogComponent implements OnInit {
     });
 
     this.rolService.listarTodos().subscribe((r: RolResponse[]) => {
+      // Filtrar siempre ROLE_CLIENTE para que no se asigne en Empleados
+      const rolesValidos = r.filter(rol => rol.nombre !== 'ROLE_CLIENTE');
+      
       if (this.isEdit()) {
         const rolesActuales = this.data.empleado?.nombresRoles || [];
-        this.roles.set(r.filter(rol => rol.activo || rolesActuales.includes(rol.nombre)));
+        this.roles.set(rolesValidos.filter(rol => rol.activo || rolesActuales.includes(rol.nombre)));
       } else {
-        this.roles.set(r.filter(rol => rol.activo));
+        this.roles.set(rolesValidos.filter(rol => rol.activo));
       }
     });
   }
@@ -436,7 +473,10 @@ export class EmpleadoDialogComponent implements OnInit {
           this.form.get('apellido')?.disable();
 
           if (res.existe_en_bd && res.email) {
-            this.form.patchValue({ email: res.email });
+            const patchData: any = { email: res.email };
+            if (res.telefono) patchData.telefono = res.telefono;
+            
+            this.form.patchValue(patchData);
             this.form.get('email')?.disable();
             this.dniEsCliente.set(true);
             this.snack.open('DNI registrado en el sistema. Se reutilizarán sus datos.', 'Entendido', { duration: 4000 });
@@ -521,7 +561,10 @@ export class EmpleadoDialogComponent implements OnInit {
         this.dialogRef.close(res);
       },
       error: (err: any) => {
-        const msg = err.error?.mensaje || err.error?.message || 'Error al guardar';
+        let msg = err.error?.mensaje || err.error?.message || 'Error al guardar';
+        if (err.error?.detalles && Array.isArray(err.error.detalles)) {
+          msg += ': ' + err.error.detalles.join(', ');
+        }
 
         // Detectar si el backend dice que el DNI pertenece a un cliente
         if (msg.toLowerCase().includes('cliente') || msg.toLowerCase().includes('dni')) {
@@ -529,7 +572,7 @@ export class EmpleadoDialogComponent implements OnInit {
           this.paso.set('formulario');
           this.snack.open('Este DNI pertenece a un cliente existente. Se reutilizarán sus datos.', 'Entendido', { duration: 5000 });
         } else {
-          this.snack.open(msg, 'Cerrar', { duration: 3000 });
+          this.snack.open(msg, 'Cerrar', { duration: 6000 });
         }
         this.loading.set(false);
       }

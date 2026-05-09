@@ -28,4 +28,7 @@ public class ReniecResponseDTO {
 
     @JsonProperty("email")
     private String email;
+
+    @JsonProperty("telefono")
+    private String telefono;
 }

@@ -43,9 +43,10 @@ public class ClienteController {
     @GetMapping
     public ResponseEntity<Page<ClienteResponseDTO>> listarClientes(
             Pageable pageable,
-            @RequestParam(required = false) String buscar) {
+            @RequestParam(required = false) String buscar,
+            @RequestParam(required = false) Boolean estado) {
 
-        Page<ClienteResponseDTO> clientes = clienteServicio.listarTodos(buscar, pageable);
+        Page<ClienteResponseDTO> clientes = clienteServicio.listarTodos(buscar, estado, pageable);
 
         return ResponseEntity.ok(clientes);
     }

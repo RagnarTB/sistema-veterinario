@@ -42,4 +42,7 @@ public class EmpleadoRequestDTO {
 
     @NotEmpty(message = "Debe asignar al menos una sede al empleado")
     private Set<Long> sedeIds;
+
+    
+
 }

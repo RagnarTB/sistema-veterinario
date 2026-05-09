@@ -41,7 +41,7 @@ export interface SedeDialogData {
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Nombre de la Sede</mat-label>
           <mat-icon matPrefix>store</mat-icon>
-          <input matInput formControlName="nombre" placeholder="Ej. Sede Central" />
+          <input matInput formControlName="nombre" placeholder="Ej. Sede Central" (input)="form.get('nombre')?.setValue($event.target.value.toUpperCase(), {emitEvent: false})" />
           <mat-error *ngIf="form.get('nombre')?.hasError('required')">El nombre es obligatorio</mat-error>
         </mat-form-field>
 
@@ -55,7 +55,7 @@ export interface SedeDialogData {
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Teléfono</mat-label>
           <mat-icon matPrefix>phone</mat-icon>
-          <input matInput formControlName="telefono" placeholder="Ej. 987654321" required maxlength="9"/>
+          <input matInput formControlName="telefono" placeholder="Ej. 987654321" required maxlength="9" pattern="[0-9]*" (keypress)="soloNumeros($event)" />
           <mat-error *ngIf="form.get('telefono')?.hasError('required')">El teléfono es obligatorio</mat-error>
         </mat-form-field>
 
@@ -97,6 +97,15 @@ export class SedeDialogComponent implements OnInit {
   }
 
   ngOnInit() {}
+
+  soloNumeros(event: KeyboardEvent): boolean {
+    const charCode = (event.which) ? event.which : event.keyCode;
+    if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+      event.preventDefault();
+      return false;
+    }
+    return true;
+  }
 
   guardar() {
     if (this.form.invalid) return;

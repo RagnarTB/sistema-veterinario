@@ -9,6 +9,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,9 +82,18 @@ public class EmpleadoServicio {
                 // Verificar si el nuevo email ya lo usa otro
                 Optional<Usuario> uEmail = usuarioRepositorio.findByEmail(dto.getEmail());
                 if (uEmail.isPresent() && !uEmail.get().getId().equals(u.getId())) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro usuario con este email");
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro usuario con este email.");
                 }
                 u.setEmail(dto.getEmail());
+            }
+
+            // Validar que solo admin@veterinaria.com puede asignar ROLE_ADMIN a un nuevo empleado si ya era cliente
+            String currentUsername = SecurityContextHolder.getContext().getAuthentication() != null ? 
+                                     SecurityContextHolder.getContext().getAuthentication().getName() : "";
+            
+            boolean asignandoAdmin = dto.getRoles().contains("ROLE_ADMIN");
+            if (asignandoAdmin && !currentUsername.equals("admin@veterinaria.com")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo el administrador principal puede asignar el rol ADMIN.");
             }
 
             for (String nombreRol : dto.getRoles()) {
@@ -95,7 +105,16 @@ public class EmpleadoServicio {
         } else {
             // Verificar si el email ya existe en otro lado
             if (usuarioRepositorio.findByEmail(dto.getEmail()).isPresent()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe un usuario con este email");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email proporcionado ya está en uso.");
+            }
+
+            // Validar que solo admin@veterinaria.com puede asignar ROLE_ADMIN
+            String currentUsername = SecurityContextHolder.getContext().getAuthentication() != null ? 
+                                     SecurityContextHolder.getContext().getAuthentication().getName() : "";
+            
+            boolean asignandoAdmin = dto.getRoles().contains("ROLE_ADMIN");
+            if (asignandoAdmin && !currentUsername.equals("admin@veterinaria.com")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo el administrador principal puede asignar el rol ADMIN.");
             }
 
             // Usuario nuevo
@@ -157,12 +176,12 @@ public class EmpleadoServicio {
         return mapearAResponse(empleadoGuardado);
     }
 
-    public Page<EmpleadoResponseDTO> listarTodos(String buscar, Pageable pageable) {
+    public Page<EmpleadoResponseDTO> listarTodos(String buscar, Boolean estado, Pageable pageable) {
         Page<Empleado> pagina;
         if (buscar != null && !buscar.trim().isEmpty()) {
-            pagina = empleadoRepositorio.buscarEmpleadosConRoles(buscar, pageable);
+            pagina = empleadoRepositorio.buscarEmpleadosConRoles(buscar, estado, pageable);
         } else {
-            pagina = empleadoRepositorio.findAllConRoles(pageable);
+            pagina = empleadoRepositorio.findAllConRoles(estado, pageable);
         }
         return pagina.map(this::mapearAResponse);
     }
@@ -181,11 +200,21 @@ public class EmpleadoServicio {
         Usuario usuario = empleado.getUsuario();
         
         if (!usuario.getDni().equals(dto.getDni()) && usuarioRepositorio.existsByDni(dto.getDni())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro usuario con este DNI");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El DNI proporcionado ya está en uso por otro empleado/cliente.");
         }
 
         if (!usuario.getEmail().equals(dto.getEmail()) && usuarioRepositorio.findByEmail(dto.getEmail()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro usuario con este email");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email proporcionado ya está en uso por otro empleado/cliente.");
+        }
+
+        // Protección de admin principal
+        if (usuario.getEmail().equals("admin@veterinaria.com")) {
+            if (!dto.getEmail().equals("admin@veterinaria.com")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No se puede cambiar el correo del administrador principal.");
+            }
+            if (!dto.getRoles().contains("ROLE_ADMIN")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No se puede remover el rol ADMIN del administrador principal.");
+            }
         }
 
         usuario.setEmail(dto.getEmail());
@@ -197,6 +226,7 @@ public class EmpleadoServicio {
         // Actualizar roles
         Set<Rol> rolesAsignados = new HashSet<>();
         boolean mantuvoRolCliente = false;
+        boolean teniaAdmin = false;
         
         // Revisar si ya era cliente para no quitarle el rol de CLIENTE inadvertidamente
         for (Rol r : usuario.getRoles()) {
@@ -204,6 +234,18 @@ public class EmpleadoServicio {
                 rolesAsignados.add(r);
                 mantuvoRolCliente = true;
             }
+            if (r.getNombre().equals("ROLE_ADMIN")) {
+                teniaAdmin = true;
+            }
+        }
+
+        String currentUsername = SecurityContextHolder.getContext().getAuthentication() != null ? 
+                                 SecurityContextHolder.getContext().getAuthentication().getName() : "";
+        boolean asignandoAdmin = dto.getRoles().contains("ROLE_ADMIN");
+
+        // Si se está intentando añadir o quitar el ROLE_ADMIN, solo el admin principal puede hacerlo
+        if (teniaAdmin != asignandoAdmin && !currentUsername.equals("admin@veterinaria.com")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo el administrador principal puede modificar la asignación del rol ADMIN.");
         }
 
         for (String nombreRol : dto.getRoles()) {
@@ -212,6 +254,12 @@ public class EmpleadoServicio {
             rolesAsignados.add(rol);
         }
         
+        // Regla: si le quitan todos los roles laborales y no es cliente, sugerir desactivar o fallar.
+        // El frontend ya no permite enviar roles vacíos, pero por seguridad en backend:
+        if (dto.getRoles().isEmpty() && !mantuvoRolCliente) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Un empleado debe tener al menos un rol. Sugerencia: Desactívelo en lugar de quitarle todos los roles.");
+        }
+
         usuario.setRoles(rolesAsignados);
         usuarioRepositorio.save(usuario);
 
@@ -247,6 +295,10 @@ public class EmpleadoServicio {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Empleado no encontrado con ID: " + id));
         
         Usuario usuario = empleado.getUsuario();
+
+        if (usuario.getEmail().equals("admin@veterinaria.com")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El administrador principal no puede ser desactivado o alterado de estado.");
+        }
 
         if (estado) {
             // El admin acaba de darle click a "Activar"
