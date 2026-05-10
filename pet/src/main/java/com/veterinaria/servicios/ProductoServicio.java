@@ -40,7 +40,7 @@ public class ProductoServicio {
     // =========================
     // POST /api/productos
     // =========================
-    public ProductoResponseDTO guardar(ProductoRequestDTO dto) {
+    public ProductoResponseDTO guardar(ProductoRequestDTO dto, Long sedeId) {
         Producto producto = new Producto();
         producto.setNombre(normalizarTexto(dto.getNombre()));
         producto.setDescripcion(dto.getDescripcion());
@@ -61,28 +61,28 @@ public class ProductoServicio {
         }
 
         Producto productoGuardado = productoRepositorio.save(producto);
-        return mapearAResponseDTO(productoGuardado);
+        return mapearAResponseDTO(productoGuardado, sedeId);
     }
 
     // =========================
     // GET /api/productos
     // =========================
-    public Page<ProductoResponseDTO> listarTodos(String buscar, Pageable pageable) {
+    public Page<ProductoResponseDTO> listarTodos(String buscar, Long sedeId, Pageable pageable) {
         Page<Producto> pagina;
         if (buscar != null && !buscar.trim().isEmpty()) {
             pagina = productoRepositorio.findByNombreContainingIgnoreCase(buscar, pageable);
         } else {
             pagina = productoRepositorio.findAll(pageable);
         }
-        return pagina.map(this::mapearAResponseDTO);
+        return pagina.map(p -> this.mapearAResponseDTO(p, sedeId));
     }
 
     // =========================
     // GET /api/productos/{id}
     // =========================
-    public ProductoResponseDTO buscarPorId(Long id) {
+    public ProductoResponseDTO buscarPorId(Long id, Long sedeId) {
         return productoRepositorio.findById(id)
-                .map(this::mapearAResponseDTO)
+                .map(p -> this.mapearAResponseDTO(p, sedeId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Producto no encontrado con ID: " + id));
     }
@@ -90,7 +90,7 @@ public class ProductoServicio {
     // =========================
     // PUT /api/productos/{id}
     // =========================
-    public ProductoResponseDTO actualizar(Long id, ProductoRequestDTO dto) {
+    public ProductoResponseDTO actualizar(Long id, ProductoRequestDTO dto, Long sedeId) {
         Producto productodb = productoRepositorio.findById(id).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Producto no encontrado con ID: " + id));
@@ -122,7 +122,7 @@ public class ProductoServicio {
         }
 
         Producto productoGuardado = productoRepositorio.save(productodb);
-        return mapearAResponseDTO(productoGuardado);
+        return mapearAResponseDTO(productoGuardado, sedeId);
     }
 
     // =========================
@@ -142,11 +142,8 @@ public class ProductoServicio {
     public List<ProductoResponseDTO> obtenerAlertasStock() {
         List<InventarioSede> alertas = inventarioSedeRepositorio.findAlertasStock();
 
-        // Para demo: devolvemos productos únicos (sin duplicar por sede).
         return alertas.stream()
-                .map(InventarioSede::getProducto)
-                .distinct()
-                .map(this::mapearAResponseDTO)
+                .map(inv -> this.mapearAResponseDTO(inv.getProducto(), inv.getSede().getId()))
                 .collect(Collectors.toList());
     }
 
@@ -164,7 +161,18 @@ public class ProductoServicio {
     // =========================
     // MAPPER PRIVADO (evita duplicar lógica de mapeo)
     // =========================
-    private ProductoResponseDTO mapearAResponseDTO(Producto producto) {
+    private ProductoResponseDTO mapearAResponseDTO(Producto producto, Long sedeId) {
+        java.math.BigDecimal stockActual = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal stockMinimo = java.math.BigDecimal.ZERO;
+
+        if (sedeId != null) {
+            java.util.Optional<InventarioSede> inv = inventarioSedeRepositorio.findByProductoIdAndSedeId(producto.getId(), sedeId);
+            if (inv.isPresent()) {
+                stockActual = inv.get().getStockActual();
+                stockMinimo = inv.get().getStockMinimo();
+            }
+        }
+
         return new ProductoResponseDTO(
                 producto.getId(),
                 producto.getNombre(),
@@ -178,6 +186,8 @@ public class ProductoServicio {
                 producto.getUnidadCompra() != null ? producto.getUnidadCompra().getNombre() : null,
                 producto.getUnidadVenta() != null ? producto.getUnidadVenta().getId() : null,
                 producto.getUnidadVenta() != null ? producto.getUnidadVenta().getNombre() : null,
-                producto.getFactorConversion()); 
+                producto.getFactorConversion(),
+                stockActual,
+                stockMinimo); 
     }
 }

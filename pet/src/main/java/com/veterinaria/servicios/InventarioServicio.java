@@ -10,6 +10,7 @@ import java.util.List;
 
 import com.veterinaria.dtos.InventarioRequestDTO;
 import com.veterinaria.dtos.IngresoStockDTO;
+import com.veterinaria.dtos.LoteEditDTO;
 import com.veterinaria.dtos.SalidaStockDTO;
 import com.veterinaria.dtos.LoteInventarioResponseDTO;
 import com.veterinaria.dtos.MovimientoInventarioResponseDTO;
@@ -245,5 +246,47 @@ public class InventarioServicio {
         movimiento.setFecha(LocalDateTime.now());
         movimiento.setResponsable(responsable);
         movimientoRepositorio.save(movimiento);
+    }
+    @Transactional
+    public void actualizarLote(Long loteId, LoteEditDTO dto, String emailResponsable) {
+        LoteInventario lote = loteRepositorio.findById(loteId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lote no encontrado"));
+
+        Empleado responsable = empleadoRepositorio.findByUsuarioEmail(emailResponsable).orElse(null);
+
+        // Registrar el cambio en el Kardex como un ajuste de información
+        MovimientoInventario movimiento = new MovimientoInventario();
+        movimiento.setProducto(lote.getProducto());
+        movimiento.setSede(lote.getSede());
+        movimiento.setTipoMovimiento(TipoMovimiento.AJUSTE_POSITIVO); // Usamos ajuste para auditoría
+        movimiento.setCantidad(BigDecimal.ZERO); // No cambia el stock
+        movimiento.setMotivo("EDICIÓN LOTE: " + lote.getNumeroLote() + " -> " + dto.getNumeroLote() + ". Motivo: " + dto.getMotivo());
+        movimiento.setFecha(LocalDateTime.now());
+        movimiento.setResponsable(responsable);
+        movimientoRepositorio.save(movimiento);
+
+        lote.setNumeroLote(dto.getNumeroLote());
+        lote.setFechaVencimiento(dto.getFechaVencimiento());
+        if (dto.getProveedorId() != null) {
+            lote.setProveedor(proveedorRepositorio.findById(dto.getProveedorId()).orElse(null));
+        }
+        loteRepositorio.save(lote);
+    }
+
+    @Transactional
+    public void actualizarStockMinimo(Long productoId, Long sedeId, BigDecimal stockMinimo) {
+        InventarioSede inventario = inventarioSedeRepositorio.findByProductoIdAndSedeId(productoId, sedeId)
+                .orElseGet(() -> {
+                    InventarioSede nuevo = new InventarioSede();
+                    nuevo.setProducto(productoRepositorio.findById(productoId)
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado")));
+                    nuevo.setSede(sedeRepositorio.findById(sedeId)
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada")));
+                    nuevo.setStockActual(BigDecimal.ZERO);
+                    return nuevo;
+                });
+        
+        inventario.setStockMinimo(stockMinimo);
+        inventarioSedeRepositorio.save(inventario);
     }
 }

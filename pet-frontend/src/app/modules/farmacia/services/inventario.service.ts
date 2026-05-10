@@ -39,6 +39,7 @@ export interface LoteInventario {
   fechaVencimiento: string;
   stockRestante: number;
   proveedorNombre?: string;
+  ultimoMotivo?: string;
 }
 
 export interface MovimientoInventario {

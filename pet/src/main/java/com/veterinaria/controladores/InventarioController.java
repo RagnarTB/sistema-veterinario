@@ -56,4 +56,16 @@ public class InventarioController {
     public void registrarSalidaAjuste(@Valid @RequestBody SalidaStockDTO dto, Principal principal) {
         inventarioServicio.registrarSalidaAjuste(dto, principal.getName());
     }
+
+    @PutMapping("/lote/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
+    public void actualizarLote(@PathVariable Long id, @RequestBody com.veterinaria.dtos.LoteEditDTO dto, Principal principal) {
+        inventarioServicio.actualizarLote(id, dto, principal.getName());
+    }
+
+    @PutMapping("/stock-minimo/producto/{productoId}/sede/{sedeId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
+    public void actualizarStockMinimo(@PathVariable Long productoId, @PathVariable Long sedeId, @RequestParam java.math.BigDecimal stockMinimo) {
+        inventarioServicio.actualizarStockMinimo(productoId, sedeId, stockMinimo);
+    }
 }

@@ -23,4 +23,6 @@ public class ProductoResponseDTO {
     private Long unidadVentaId;
     private String unidadVentaNombre;
     private BigDecimal factorConversion;
+    private BigDecimal stockActual;
+    private BigDecimal stockMinimo;
 }

@@ -32,16 +32,17 @@ public class ProductoController {
     private ProductoServicio productoServicio;
 
     @PostMapping
-    public ResponseEntity<ProductoResponseDTO> crearProducto(@Valid @RequestBody ProductoRequestDTO dto) {
-        ProductoResponseDTO respuesta = productoServicio.guardar(dto);
+    public ResponseEntity<ProductoResponseDTO> crearProducto(@Valid @RequestBody ProductoRequestDTO dto, @RequestParam(required = false) Long sedeId) {
+        ProductoResponseDTO respuesta = productoServicio.guardar(dto, sedeId);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
 
     @GetMapping
     public ResponseEntity<Page<ProductoResponseDTO>> listarProductos(
             Pageable pageable,
-            @RequestParam(required = false) String buscar) {
-        Page<ProductoResponseDTO> productos = productoServicio.listarTodos(buscar, pageable);
+            @RequestParam(required = false) String buscar,
+            @RequestParam(required = false) Long sedeId) {
+        Page<ProductoResponseDTO> productos = productoServicio.listarTodos(buscar, sedeId, pageable);
         return ResponseEntity.ok(productos);
     }
 
@@ -55,15 +56,16 @@ public class ProductoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProductoResponseDTO> obtenerProductoPorId(@PathVariable Long id) {
-        ProductoResponseDTO producto = productoServicio.buscarPorId(id);
+    public ResponseEntity<ProductoResponseDTO> obtenerProductoPorId(@PathVariable Long id, @RequestParam(required = false) Long sedeId) {
+        ProductoResponseDTO producto = productoServicio.buscarPorId(id, sedeId);
         return ResponseEntity.ok(producto);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ProductoResponseDTO> actualizarProducto(@PathVariable Long id,
-            @Valid @RequestBody ProductoRequestDTO dto) {
-        ProductoResponseDTO productoActualizado = productoServicio.actualizar(id, dto);
+            @Valid @RequestBody ProductoRequestDTO dto,
+            @RequestParam(required = false) Long sedeId) {
+        ProductoResponseDTO productoActualizado = productoServicio.actualizar(id, dto, sedeId);
         return ResponseEntity.ok(productoActualizado);
     }
 

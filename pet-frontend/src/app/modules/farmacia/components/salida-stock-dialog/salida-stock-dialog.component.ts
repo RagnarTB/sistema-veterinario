@@ -27,12 +27,18 @@ import { InventarioService } from '../../services/inventario.service';
           <div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border-color);">
             <p class="text-sm" style="color: var(--text-secondary)">Producto:</p>
             <p class="font-bold" style="color: var(--text-primary)">{{ data.producto.nombre }}</p>
-            <p class="text-xs" style="color: var(--text-muted); margin-top: 4px;">
-              Unidad: <strong>{{ data.producto.unidadVentaNombre }}</strong> 
-              @if (!permiteDecimales) {
-                <span style="color: #fca5a5;">(No permite decimales)</span>
-              }
-            </p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+              <p class="text-xs" style="color: var(--text-muted);">
+                Unidad: <strong>{{ data.producto.unidadVentaNombre }}</strong> 
+                @if (!permiteDecimales) {
+                  <span style="color: #fca5a5;">(No permite decimales)</span>
+                }
+              </p>
+              <div style="text-align: right;">
+                <span class="text-xs" style="color: var(--text-muted);">Stock Actual:</span>
+                <p class="font-bold" style="color: var(--color-primary-400); font-size: 1rem;">{{ data.producto.stockActual || 0 }}</p>
+              </div>
+            </div>
           </div>
 
           <form [formGroup]="form" (ngSubmit)="irAConfirmar()">
@@ -77,11 +83,15 @@ import { InventarioService } from '../../services/inventario.service';
               <p class="font-medium">{{ data.producto.nombre }}</p>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-3 gap-4">
               <div class="summary-item">
-                <span class="text-xs" style="color: var(--text-muted)">Cantidad:</span>
+                <span class="text-xs" style="color: var(--text-muted)">Stock Actual:</span>
+                <p class="font-medium">{{ data.producto.stockActual || 0 }}</p>
+              </div>
+              <div class="summary-item">
+                <span class="text-xs" style="color: var(--text-muted)">Ajuste:</span>
                 <p class="font-bold" [style.color]="esSalida() ? '#f87171' : '#4ade80'" style="font-size: 1.1rem;">
-                  {{ esSalida() ? '-' : '+' }} {{ form.get('cantidad')?.value }} {{ data.producto.unidadVentaNombre }}
+                  {{ esSalida() ? '-' : '+' }} {{ form.get('cantidad')?.value }}
                 </p>
               </div>
               <div class="summary-item">

@@ -9,6 +9,7 @@ import { ModalConfirmacionComponent } from '../../shared/components/modal-confir
 import { ProductoDialogComponent } from './components/producto-dialog/producto-dialog.component';
 import { GestionCatalogosDialogComponent } from './components/gestion-catalogos-dialog/gestion-catalogos-dialog.component';
 import { InventarioService } from './services/inventario.service';
+import { StockMinimoDialogComponent } from './components/stock-minimo-dialog/stock-minimo-dialog.component';
 
 @Component({
   selector: 'app-inventario',
@@ -93,9 +94,9 @@ import { InventarioService } from './services/inventario.service';
                     </div>
                   </td>
                   <td class="text-center">
-                    <div class="stock-minimo-container" (click)="editarStockMinimo(producto)" matTooltip="Click para editar stock mínimo" style="cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                    <div class="stock-minimo-badge" (click)="editarStockMinimo(producto)" matTooltip="Click para configurar stock mínimo">
+                      <span class="material-icons-round">notifications_active</span>
                       <span>{{ producto.stockMinimo || 0 }}</span>
-                      <span class="material-icons-round" style="font-size: 14px; color: var(--text-muted)">edit</span>
                     </div>
                   </td>
                   <td>
@@ -161,6 +162,29 @@ import { InventarioService } from './services/inventario.service';
       display: flex; justify-content: space-between; align-items: center;
     }
     .btn-sm { padding: 0.35rem 0.85rem !important; font-size: 0.8rem; }
+    
+    .stock-minimo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 20px;
+      color: #60a5fa;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .stock-minimo-badge:hover {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: #60a5fa;
+      transform: translateY(-1px);
+    }
+    .stock-minimo-badge .material-icons-round {
+      font-size: 16px;
+    }
   `]
 })
 export class InventarioComponent implements OnInit {
@@ -272,22 +296,26 @@ export class InventarioComponent implements OnInit {
   }
 
   editarStockMinimo(producto: Producto) {
-    const nuevoStock = prompt('Ingrese el nuevo stock mínimo para "' + producto.nombre + '":', producto.stockMinimo?.toString() || '0');
-    if (nuevoStock !== null) {
-      const stockNum = parseFloat(nuevoStock);
-      if (isNaN(stockNum) || stockNum < 0) {
-        this.mostrarMensaje('Ingrese un valor numérico válido');
-        return;
+    const dialogRef = this.dialog.open(StockMinimoDialogComponent, {
+      width: '400px',
+      data: { 
+        productoNombre: producto.nombre, 
+        stockMinimoActual: producto.stockMinimo || 0 
       }
+    });
 
-      const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
-      this.inventarioService.actualizarStockMinimo(producto.id, sedeId, stockNum).subscribe({
-        next: () => {
-          this.mostrarMensaje('Stock mínimo actualizado');
-          this.cargarProductos();
-        },
-        error: () => this.mostrarMensaje('Error al actualizar stock mínimo')
-      });
-    }
+    dialogRef.afterClosed().subscribe(nuevoStock => {
+      if (nuevoStock !== undefined && nuevoStock !== null) {
+        const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
+        this.inventarioService.actualizarStockMinimo(producto.id, sedeId, nuevoStock).subscribe({
+          next: () => {
+            this.mostrarMensaje('Stock mínimo actualizado');
+            // Forzar actualización inmediata de la lista
+            this.cargarProductos();
+          },
+          error: () => this.mostrarMensaje('Error al actualizar stock mínimo')
+        });
+      }
+    });
   }
 }
