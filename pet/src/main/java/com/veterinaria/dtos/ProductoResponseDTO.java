@@ -14,4 +14,13 @@ public class ProductoResponseDTO {
     private String nombre;
     private String descripcion;
     private BigDecimal precio;
+    private Boolean activo;
+    private String marca;
+    private Long categoriaId;
+    private String categoriaNombre;
+    private Long unidadCompraId;
+    private String unidadCompraNombre;
+    private Long unidadVentaId;
+    private String unidadVentaNombre;
+    private BigDecimal factorConversion;
 }

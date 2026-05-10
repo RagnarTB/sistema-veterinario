@@ -15,16 +15,26 @@ import com.veterinaria.modelos.InventarioSede;
 import com.veterinaria.modelos.Producto;
 import com.veterinaria.respositorios.InventarioSedeRepositorio;
 import com.veterinaria.respositorios.ProductoRepositorio;
+import com.veterinaria.respositorios.CategoriaProductoRepositorio;
+import com.veterinaria.respositorios.UnidadMedidaRepositorio;
 
 @Service
 public class ProductoServicio {
 
     private final ProductoRepositorio productoRepositorio;
     private final InventarioSedeRepositorio inventarioSedeRepositorio;
+    private final CategoriaProductoRepositorio categoriaRepositorio;
+    private final UnidadMedidaRepositorio unidadRepositorio;
 
-    public ProductoServicio(ProductoRepositorio productoRepositorio, InventarioSedeRepositorio inventarioSedeRepositorio) {
+    public ProductoServicio(
+            ProductoRepositorio productoRepositorio, 
+            InventarioSedeRepositorio inventarioSedeRepositorio,
+            CategoriaProductoRepositorio categoriaRepositorio,
+            UnidadMedidaRepositorio unidadRepositorio) {
         this.productoRepositorio = productoRepositorio;
         this.inventarioSedeRepositorio = inventarioSedeRepositorio;
+        this.categoriaRepositorio = categoriaRepositorio;
+        this.unidadRepositorio = unidadRepositorio;
     }
 
     // =========================
@@ -35,6 +45,20 @@ public class ProductoServicio {
         producto.setNombre(dto.getNombre());
         producto.setDescripcion(dto.getDescripcion());
         producto.setPrecio(dto.getPrecio());
+        producto.setMarca(dto.getMarca());
+        if (dto.getFactorConversion() != null) {
+            producto.setFactorConversion(dto.getFactorConversion());
+        }
+
+        if (dto.getCategoriaId() != null) {
+            producto.setCategoria(categoriaRepositorio.findById(dto.getCategoriaId()).orElse(null));
+        }
+        if (dto.getUnidadCompraId() != null) {
+            producto.setUnidadCompra(unidadRepositorio.findById(dto.getUnidadCompraId()).orElse(null));
+        }
+        if (dto.getUnidadVentaId() != null) {
+            producto.setUnidadVenta(unidadRepositorio.findById(dto.getUnidadVentaId()).orElse(null));
+        }
 
         Producto productoGuardado = productoRepositorio.save(producto);
         return mapearAResponseDTO(productoGuardado);
@@ -74,6 +98,28 @@ public class ProductoServicio {
         productodb.setNombre(dto.getNombre());
         productodb.setDescripcion(dto.getDescripcion());
         productodb.setPrecio(dto.getPrecio());
+        productodb.setMarca(dto.getMarca());
+        if (dto.getFactorConversion() != null) {
+            productodb.setFactorConversion(dto.getFactorConversion());
+        }
+
+        if (dto.getCategoriaId() != null) {
+            productodb.setCategoria(categoriaRepositorio.findById(dto.getCategoriaId()).orElse(null));
+        } else {
+            productodb.setCategoria(null);
+        }
+
+        if (dto.getUnidadCompraId() != null) {
+            productodb.setUnidadCompra(unidadRepositorio.findById(dto.getUnidadCompraId()).orElse(null));
+        } else {
+            productodb.setUnidadCompra(null);
+        }
+
+        if (dto.getUnidadVentaId() != null) {
+            productodb.setUnidadVenta(unidadRepositorio.findById(dto.getUnidadVentaId()).orElse(null));
+        } else {
+            productodb.setUnidadVenta(null);
+        }
 
         Producto productoGuardado = productoRepositorio.save(productodb);
         return mapearAResponseDTO(productoGuardado);
@@ -112,6 +158,15 @@ public class ProductoServicio {
                 producto.getId(),
                 producto.getNombre(),
                 producto.getDescripcion(),
-                producto.getPrecio()); 
+                producto.getPrecio(),
+                producto.getActivo(),
+                producto.getMarca(),
+                producto.getCategoria() != null ? producto.getCategoria().getId() : null,
+                producto.getCategoria() != null ? producto.getCategoria().getNombre() : null,
+                producto.getUnidadCompra() != null ? producto.getUnidadCompra().getId() : null,
+                producto.getUnidadCompra() != null ? producto.getUnidadCompra().getNombre() : null,
+                producto.getUnidadVenta() != null ? producto.getUnidadVenta().getId() : null,
+                producto.getUnidadVenta() != null ? producto.getUnidadVenta().getNombre() : null,
+                producto.getFactorConversion()); 
     }
 }

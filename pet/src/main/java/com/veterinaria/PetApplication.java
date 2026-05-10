@@ -31,6 +31,9 @@ public class PetApplication {
 			UsuarioRepositorio usuarioRepositorio,
 			EmpleadoRepositorio empleadoRepositorio,
 			SedeRepositorio sedeRepositorio,
+			CategoriaProductoRepositorio categoriaProductoRepositorio,
+			UnidadMedidaRepositorio unidadMedidaRepositorio,
+			ProveedorRepositorio proveedorRepositorio,
 			PasswordEncoder passwordEncoder) {
 		return args -> {
 			// 1. Inicializar Roles
@@ -90,6 +93,37 @@ public class PetApplication {
 				empleadoRepositorio.save(adminEmpleado);
 
 				System.out.println("✅ Usuario administrador y empleado creados (admin@veterinaria.com / admin123)");
+			}
+
+			// 4. Inicializar Categorías de Producto
+			if (categoriaProductoRepositorio.count() == 0) {
+				categoriaProductoRepositorio.save(new CategoriaProducto(null, "Retail y Pet Shop", "Alimentos, accesorios, premios y snacks", true));
+				categoriaProductoRepositorio.save(new CategoriaProducto(null, "Farmacia Veterinaria", "Medicamentos, antiparasitarios y biológicos", true));
+				categoriaProductoRepositorio.save(new CategoriaProducto(null, "Insumos Clínicos", "Material descartable, suministros quirúrgicos y reactivos", true));
+				categoriaProductoRepositorio.save(new CategoriaProducto(null, "Higiene y Cuidado", "Champús, sprays y productos de limpieza", true));
+				System.out.println("✅ Categorías de producto inicializadas");
+			}
+
+			// 5. Inicializar Unidades de Medida
+			if (unidadMedidaRepositorio.count() == 0) {
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Unidad", "Un", true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Caja", "Cj", true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Tableta", "Tab", true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Blíster", "Blíst", true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Mililitro", "ml", true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Frasco", "Fr", true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Saco", "Sc", true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Kilogramo", "kg", true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Metro", "m", true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Kit / Prueba", "Kit", true));
+				System.out.println("✅ Unidades de medida inicializadas");
+			}
+
+			// 6. Inicializar Proveedores de ejemplo
+			if (proveedorRepositorio.count() == 0) {
+				proveedorRepositorio.save(new Proveedor(null, "Distribuidora VetPharma S.A.C.", "20512345678", "Juan Pérez", "987654321", "ventas@vetpharma.com", "Av. Los Olivos 456", true));
+				proveedorRepositorio.save(new Proveedor(null, "Pet Food Importaciones E.I.R.L.", "20587654321", "María López", "912345678", "contacto@petfood.com", "Jr. Comercio 789", true));
+				System.out.println("✅ Proveedores de ejemplo inicializados");
 			}
 
 		};

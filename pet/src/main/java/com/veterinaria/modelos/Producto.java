@@ -9,6 +9,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -29,6 +32,23 @@ public class Producto {
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal precio;
+
+    private String marca;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "categoria_id")
+    private CategoriaProducto categoria;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unidad_compra_id")
+    private UnidadMedida unidadCompra;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unidad_venta_id")
+    private UnidadMedida unidadVenta;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal factorConversion = BigDecimal.ONE;
 
     @Version
     private Long version;
