@@ -8,6 +8,7 @@ import { ProductoService, Producto } from './services/producto.service';
 import { ModalConfirmacionComponent } from '../../shared/components/modal-confirmacion/modal-confirmacion.component';
 import { ProductoDialogComponent } from './components/producto-dialog/producto-dialog.component';
 import { GestionCatalogosDialogComponent } from './components/gestion-catalogos-dialog/gestion-catalogos-dialog.component';
+import { InventarioService } from './services/inventario.service';
 
 @Component({
   selector: 'app-inventario',
@@ -62,7 +63,8 @@ import { GestionCatalogosDialogComponent } from './components/gestion-catalogos-
                 <th>Producto</th>
                 <th>Categoría</th>
                 <th>Precio (S/)</th>
-                <th>Conversión</th>
+                <th class="text-center">Stock Actual</th>
+                <th class="text-center">Stock Mín.</th>
                 <th>Estado</th>
                 <th class="text-center">Acciones</th>
               </tr>
@@ -82,14 +84,19 @@ import { GestionCatalogosDialogComponent } from './components/gestion-catalogos-
                   <td class="font-semibold" style="color: var(--color-primary-400)">
                     S/ {{ producto.precio | number:'1.2-2' }}
                   </td>
-                  <td>
-                    @if (producto.factorConversion && producto.unidadCompraNombre && producto.unidadVentaNombre) {
-                      <div class="text-xs">
-                        1 {{ producto.unidadCompraNombre }} = {{ producto.factorConversion }} {{ producto.unidadVentaNombre }}
-                      </div>
-                    } @else {
-                      <span class="text-xs" style="color: var(--text-muted)">N/A</span>
-                    }
+                  <td class="text-center">
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                      <span class="font-bold" [style.color]="(producto.stockActual || 0) <= (producto.stockMinimo || 0) ? '#f87171' : '#4ade80'" style="font-size: 1.1rem;">
+                        {{ producto.stockActual || 0 }}
+                      </span>
+                      <span class="text-xs" style="color: var(--text-muted)">{{ producto.unidadVentaNombre }}</span>
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <div class="stock-minimo-container" (click)="editarStockMinimo(producto)" matTooltip="Click para editar stock mínimo" style="cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                      <span>{{ producto.stockMinimo || 0 }}</span>
+                      <span class="material-icons-round" style="font-size: 14px; color: var(--text-muted)">edit</span>
+                    </div>
                   </td>
                   <td>
                     <label class="toggle-switch">
@@ -101,15 +108,15 @@ import { GestionCatalogosDialogComponent } from './components/gestion-catalogos-
                   </td>
                   <td>
                     <div class="flex justify-center gap-2">
-                      <button class="btn-icon" (click)="abrirModalEditar(producto)" matTooltip="Ver Detalles / Stock">
-                        <span class="material-icons-round" style="color: #60a5fa">edit</span>
+                      <button class="btn-icon" (click)="abrirModalEditar(producto)" matTooltip="Ver Detalles / Kardex / Lotes">
+                        <span class="material-icons-round" style="color: #60a5fa">inventory_2</span>
                       </button>
                     </div>
                   </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="6" class="text-center py-8" style="color: var(--text-muted)">
+                  <td colspan="7" class="text-center py-8" style="color: var(--text-muted)">
                     No se encontraron productos.
                   </td>
                 </tr>
@@ -158,6 +165,7 @@ import { GestionCatalogosDialogComponent } from './components/gestion-catalogos-
 })
 export class InventarioComponent implements OnInit {
   private productoService = inject(ProductoService);
+  private inventarioService = inject(InventarioService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
@@ -175,7 +183,8 @@ export class InventarioComponent implements OnInit {
   }
 
   cargarProductos() {
-    this.productoService.listar(this.busqueda, this.currentPage, this.pageSize)
+    const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
+    this.productoService.listar(this.busqueda, this.currentPage, this.pageSize, sedeId)
       .subscribe({
         next: (page) => {
           this.productos = page.content;
@@ -260,5 +269,25 @@ export class InventarioComponent implements OnInit {
       width: '750px',
       disableClose: false
     });
+  }
+
+  editarStockMinimo(producto: Producto) {
+    const nuevoStock = prompt('Ingrese el nuevo stock mínimo para "' + producto.nombre + '":', producto.stockMinimo?.toString() || '0');
+    if (nuevoStock !== null) {
+      const stockNum = parseFloat(nuevoStock);
+      if (isNaN(stockNum) || stockNum < 0) {
+        this.mostrarMensaje('Ingrese un valor numérico válido');
+        return;
+      }
+
+      const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
+      this.inventarioService.actualizarStockMinimo(producto.id, sedeId, stockNum).subscribe({
+        next: () => {
+          this.mostrarMensaje('Stock mínimo actualizado');
+          this.cargarProductos();
+        },
+        error: () => this.mostrarMensaje('Error al actualizar stock mínimo')
+      });
+    }
   }
 }

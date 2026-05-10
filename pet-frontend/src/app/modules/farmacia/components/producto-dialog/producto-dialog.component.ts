@@ -1,6 +1,6 @@
 import { Component, Inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -13,7 +13,7 @@ import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-
 @Component({
   selector: 'app-producto-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, MatTabsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, MatDialogModule, MatTabsModule],
   template: `
     <div class="dialog-container">
       <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -177,21 +177,65 @@ import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-
                         <th>Nro. Lote</th>
                         <th>Vencimiento</th>
                         <th>Proveedor</th>
-                        <th>Stock Restante</th>
+                        <th>Stock</th>
+                        <th class="text-center">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (lote of lotes(); track lote.id) {
                         <tr>
-                          <td class="font-medium">{{ lote.numeroLote }}</td>
                           <td>
-                            <span class="badge" [class.badge-error]="estaPorVencer(lote.fechaVencimiento)">
-                              {{ lote.fechaVencimiento || 'Sin fecha' }}
-                            </span>
+                            @if (editandoLoteId() === lote.id) {
+                              <input [(ngModel)]="loteEditData.numeroLote" class="form-control" style="padding: 2px 4px; font-size: 0.75rem;">
+                            } @else {
+                              <span class="font-medium">{{ lote.numeroLote }}</span>
+                            }
                           </td>
-                          <td>{{ lote.proveedorNombre || 'N/A' }}</td>
+                          <td>
+                            @if (editandoLoteId() === lote.id) {
+                              <input type="date" [(ngModel)]="loteEditData.fechaVencimiento" class="form-control" style="padding: 2px 4px; font-size: 0.75rem;">
+                            } @else {
+                              <span class="badge" [class.badge-error]="estaPorVencer(lote.fechaVencimiento)">
+                                {{ lote.fechaVencimiento || 'Sin fecha' }}
+                              </span>
+                            }
+                          </td>
+                          <td>
+                            @if (editandoLoteId() === lote.id) {
+                              <select [(ngModel)]="loteEditData.proveedorId" class="form-control" style="padding: 2px 4px; font-size: 0.75rem;">
+                                <option [ngValue]="null">Sin proveedor</option>
+                                @for (p of proveedores(); track p.id) {
+                                  <option [ngValue]="p.id">{{ p.razonSocial }}</option>
+                                }
+                              </select>
+                            } @else {
+                              {{ lote.proveedorNombre || 'N/A' }}
+                            }
+                          </td>
                           <td class="font-bold" style="color: var(--color-primary-400)">{{ lote.stockRestante }}</td>
+                          <td class="text-center">
+                            @if (editandoLoteId() === lote.id) {
+                              <div style="display: flex; gap: 4px; justify-content: center;">
+                                <button class="btn-icon" (click)="guardarEdicionLote()" title="Guardar"><span class="material-icons-round" style="color: #4ade80; font-size: 18px;">check</span></button>
+                                <button class="btn-icon" (click)="cancelarEdicionLote()" title="Cancelar"><span class="material-icons-round" style="color: #f87171; font-size: 18px;">close</span></button>
+                              </div>
+                            } @else {
+                              <button class="btn-icon" (click)="iniciarEdicionLote(lote)" title="Editar Lote">
+                                <span class="material-icons-round" style="color: #60a5fa; font-size: 18px;">edit</span>
+                              </button>
+                            }
+                          </td>
                         </tr>
+                        @if (editandoLoteId() === lote.id) {
+                          <tr>
+                            <td colspan="5" style="background: rgba(59,130,246,0.05); padding: 8px 12px;">
+                              <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="text-xs font-bold" style="color: var(--text-secondary);">Motivo del cambio:</span>
+                                <input [(ngModel)]="loteEditData.motivo" class="form-control" placeholder="Ej. Corrección de error de digitación..." style="flex: 1; padding: 4px 8px; font-size: 0.75rem;">
+                              </div>
+                            </td>
+                          </tr>
+                        }
                       } @empty {
                         <tr>
                           <td colspan="4" class="text-center" style="padding: 2rem 0; color: var(--text-muted);">
@@ -266,6 +310,13 @@ export class ProductoDialogComponent implements OnInit {
   cargando = signal(false);
   confirmando = signal(false);
   tabIndex = signal(0);
+  editandoLoteId = signal<number | null>(null);
+  loteEditData = {
+    numeroLote: '',
+    fechaVencimiento: '',
+    proveedorId: null as number | null,
+    motivo: ''
+  };
 
   categorias = signal<CategoriaProducto[]>([]);
   unidades = signal<UnidadMedida[]>([]);
@@ -443,5 +494,39 @@ export class ProductoDialogComponent implements OnInit {
       'MERMA_VENCIMIENTO': 'Merma'
     };
     return map[tipo] || tipo;
+  }
+
+  iniciarEdicionLote(lote: any) {
+    this.editandoLoteId.set(lote.id);
+    this.loteEditData = {
+      numeroLote: lote.numeroLote,
+      fechaVencimiento: lote.fechaVencimiento || '',
+      proveedorId: null, // Tendríamos que buscar el ID por el nombre si no viene, pero lo ideal es que venga en el DTO
+      motivo: ''
+    };
+    // Intentar buscar el proveedor ID por nombre si no viene
+    const prov = this.proveedores().find(p => p.razonSocial === lote.proveedorNombre);
+    if (prov) this.loteEditData.proveedorId = prov.id;
+  }
+
+  cancelarEdicionLote() {
+    this.editandoLoteId.set(null);
+  }
+
+  guardarEdicionLote() {
+    if (!this.loteEditData.numeroLote || !this.loteEditData.motivo) {
+      this.snackBar.open('Complete el número de lote y el motivo', 'Cerrar', { duration: 3000 });
+      return;
+    }
+
+    this.inventarioService.actualizarLote(this.editandoLoteId()!, this.loteEditData).subscribe({
+      next: () => {
+        this.snackBar.open('Lote actualizado correctamente', 'Cerrar', { duration: 3000 });
+        this.editandoLoteId.set(null);
+        this.cargarLotes();
+        this.cargarMovimientos();
+      },
+      error: () => this.snackBar.open('Error al actualizar el lote', 'Cerrar', { duration: 3000 })
+    });
   }
 }

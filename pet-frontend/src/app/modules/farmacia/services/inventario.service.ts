@@ -76,4 +76,12 @@ export class InventarioService {
   registrarSalidaAjuste(dto: SalidaStockDTO): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/salida`, dto);
   }
+
+  actualizarLote(id: number, dto: any): Observable<void> {
+    return this.http.put<void>(`${this.apiUrl}/lote/${id}`, dto);
+  }
+
+  actualizarStockMinimo(productoId: number, sedeId: number, stockMinimo: number): Observable<void> {
+    return this.http.put<void>(`${this.apiUrl}/stock-minimo/producto/${productoId}/sede/${sedeId}?stockMinimo=${stockMinimo}`, {});
+  }
 }

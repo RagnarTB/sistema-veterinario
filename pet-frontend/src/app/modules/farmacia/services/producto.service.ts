@@ -17,6 +17,8 @@ export interface Producto {
   unidadVentaId?: number;
   unidadVentaNombre?: string;
   factorConversion?: number;
+  stockActual?: number;
+  stockMinimo?: number;
 }
 
 export interface ProductoPage {
@@ -34,14 +36,13 @@ export class ProductoService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/productos`;
 
-  listar(buscar: string = '', page: number = 0, size: number = 10): Observable<ProductoPage> {
+  listar(buscar: string = '', page: number = 0, size: number = 10, sedeId?: number): Observable<ProductoPage> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());
     
-    if (buscar) {
-      params = params.set('buscar', buscar);
-    }
+    if (buscar) params = params.set('buscar', buscar);
+    if (sedeId) params = params.set('sedeId', sedeId.toString());
 
     return this.http.get<ProductoPage>(this.apiUrl, { params });
   }
