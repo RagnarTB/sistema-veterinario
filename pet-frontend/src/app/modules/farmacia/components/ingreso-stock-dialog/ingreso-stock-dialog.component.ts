@@ -34,7 +34,6 @@ import { InventarioService } from '../../services/inventario.service';
 
         <form [formGroup]="form" (ngSubmit)="guardar()">
           <div class="grid grid-cols-2 gap-4">
-
             <div class="form-group" style="grid-column: span 2;">
               <label>Proveedor</label>
               <select formControlName="proveedorId" class="form-control">
@@ -51,20 +50,31 @@ import { InventarioService } from '../../services/inventario.service';
             </div>
 
             <div class="form-group">
-              <label>Fecha de Vencimiento *</label>
-              <input type="date" formControlName="fechaVencimiento" class="form-control">
-            </div>
-
-            <div class="form-group">
               <label>Cantidad Comprada *</label>
               <input type="number" formControlName="cantidadComprada" class="form-control" step="0.01" min="0.01">
+            </div>
+
+            <!-- Toggle de vencimiento -->
+            <div class="form-group" style="grid-column: span 2;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <label style="margin-bottom: 0; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  <input type="checkbox" formControlName="tieneVencimiento"
+                         style="width: 16px; height: 16px; accent-color: var(--color-primary-400); cursor: pointer;">
+                  ¿Este producto tiene fecha de vencimiento?
+                </label>
+              </div>
+              @if (form.get('tieneVencimiento')?.value) {
+                <input type="date" formControlName="fechaVencimiento" class="form-control" [min]="fechaMinima">
+                @if (form.get('fechaVencimiento')?.hasError('min')) {
+                  <span class="text-xs" style="color: #f87171;">La fecha no puede ser anterior a hoy.</span>
+                }
+              }
             </div>
 
             <div class="form-group" style="grid-column: span 2;">
               <label>Motivo / Observación</label>
               <input type="text" formControlName="motivo" class="form-control" placeholder="Opcional...">
             </div>
-
           </div>
 
           <!-- Preview de Conversión -->
@@ -92,6 +102,7 @@ import { InventarioService } from '../../services/inventario.service';
 export class IngresoStockDialogComponent {
   form: FormGroup;
   cargando = signal(false);
+  fechaMinima: string;
 
   constructor(
     private fb: FormBuilder,
@@ -100,10 +111,14 @@ export class IngresoStockDialogComponent {
     private inventarioService: InventarioService,
     private snackBar: MatSnackBar
   ) {
+    const hoy = new Date();
+    this.fechaMinima = hoy.toISOString().split('T')[0];
+
     this.form = this.fb.group({
       proveedorId: [null],
       numeroLote: ['', Validators.required],
-      fechaVencimiento: ['', Validators.required],
+      tieneVencimiento: [true],
+      fechaVencimiento: [''],
       cantidadComprada: [1, [Validators.required, Validators.min(0.01)]],
       motivo: ['Compra de stock']
     });
@@ -125,11 +140,28 @@ export class IngresoStockDialogComponent {
     this.cargando.set(true);
 
     const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
+    const values = this.form.value;
+
+    // Validar fecha si tiene vencimiento
+    if (values.tieneVencimiento && values.fechaVencimiento) {
+      const seleccionada = new Date(values.fechaVencimiento);
+      const hoy = new Date();
+      hoy.setHours(0,0,0,0);
+      if (seleccionada < hoy) {
+        this.snackBar.open('La fecha de vencimiento no puede ser menor a hoy', 'Cerrar', { duration: 3000 });
+        this.cargando.set(false);
+        return;
+      }
+    }
 
     const payload = {
-      ...this.form.value,
       productoId: this.data.producto.id,
-      sedeId: sedeId
+      sedeId: sedeId,
+      proveedorId: values.proveedorId,
+      numeroLote: values.numeroLote,
+      fechaVencimiento: values.tieneVencimiento ? values.fechaVencimiento : null,
+      cantidadComprada: values.cantidadComprada,
+      motivo: values.motivo
     };
 
     this.inventarioService.registrarIngreso(payload).subscribe({

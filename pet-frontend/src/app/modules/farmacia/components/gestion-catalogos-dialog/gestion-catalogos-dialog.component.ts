@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -13,8 +13,8 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
   template: `
     <div class="dialog-container">
       <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">
-          <span class="material-icons-round" style="vertical-align: middle; margin-right: 6px;">settings</span>
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+          <span class="material-icons-round">settings</span>
           Gestión de Catálogos
         </h2>
         <button class="btn-icon" (click)="dialogRef.close()">
@@ -25,7 +25,7 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
       <div class="dialog-content" style="padding: 0 !important;">
         <mat-tab-group animationDuration="200ms">
 
-          <!-- CATEGORÍAS -->
+          <!-- ===== CATEGORÍAS ===== -->
           <mat-tab label="Categorías">
             <div style="padding: 1.25rem;">
               <div style="display: flex; gap: 8px; margin-bottom: 1rem;">
@@ -34,11 +34,13 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
                   <span class="material-icons-round" style="font-size:16px;">add</span> Agregar
                 </button>
               </div>
-              <div class="table-container">
+
+              <div class="section-title">Categorías Activas</div>
+              <div class="table-container mb-4">
                 <table class="table">
-                  <thead><tr><th>Nombre</th><th>Descripción</th><th class="text-center">Acciones</th></tr></thead>
+                  <thead><tr><th>Nombre</th><th>Descripción</th><th class="text-center" style="width:120px;">Acciones</th></tr></thead>
                   <tbody>
-                    @for (cat of categorias(); track cat.id) {
+                    @for (cat of categoriasActivas(); track cat.id) {
                       <tr>
                         <td>
                           @if (editandoCatId === cat.id) {
@@ -56,15 +58,37 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
                         </td>
                         <td class="text-center">
                           @if (editandoCatId === cat.id) {
-                            <button class="btn-icon" (click)="guardarCategoria(cat)"><span class="material-icons-round" style="color:#4ade80">check</span></button>
-                            <button class="btn-icon" (click)="editandoCatId = null"><span class="material-icons-round" style="color:#f87171">close</span></button>
+                            <button class="btn-icon" (click)="guardarCategoria(cat)" title="Guardar"><span class="material-icons-round" style="color:#4ade80">check</span></button>
+                            <button class="btn-icon" (click)="editandoCatId = null" title="Cancelar"><span class="material-icons-round" style="color:#f87171">close</span></button>
                           } @else {
-                            <button class="btn-icon" (click)="iniciarEditCategoria(cat)"><span class="material-icons-round" style="color:#60a5fa">edit</span></button>
+                            <button class="btn-icon" (click)="iniciarEditCategoria(cat)" title="Editar"><span class="material-icons-round" style="color:#60a5fa">edit</span></button>
+                            <button class="btn-icon" (click)="eliminarCat(cat)" title="Desactivar"><span class="material-icons-round" style="color:#f87171">block</span></button>
                           }
                         </td>
                       </tr>
                     } @empty {
-                      <tr><td colspan="3" class="text-center" style="padding:1.5rem;color:var(--text-muted)">Sin categorías</td></tr>
+                      <tr><td colspan="3" class="text-center" style="padding:1rem;color:var(--text-muted)">No hay categorías activas</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="section-title" style="color:#f87171">Categorías Desactivadas</div>
+              <div class="table-container">
+                <table class="table">
+                  <thead><tr><th>Nombre</th><th>Descripción</th><th class="text-center" style="width:120px;">Acciones</th></tr></thead>
+                  <tbody>
+                    @for (cat of categoriasInactivas(); track cat.id) {
+                      <tr style="opacity:0.7">
+                        <td><span class="font-medium">{{ cat.nombre }}</span></td>
+                        <td><span class="text-xs">{{ cat.descripcion || '—' }}</span></td>
+                        <td class="text-center">
+                          <button class="btn-icon" (click)="activarCat(cat)" title="Reactivar"><span class="material-icons-round" style="color:#4ade80">settings_backup_restore</span></button>
+                          <button class="btn-icon" (click)="eliminarCat(cat)" title="Eliminar Permanente"><span class="material-icons-round" style="color:#f87171">delete_forever</span></button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="3" class="text-center" style="padding:1rem;color:var(--text-muted)">No hay categorías desactivadas</td></tr>
                     }
                   </tbody>
                 </table>
@@ -72,7 +96,7 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
             </div>
           </mat-tab>
 
-          <!-- UNIDADES -->
+          <!-- ===== UNIDADES ===== -->
           <mat-tab label="Unidades de Medida">
             <div style="padding: 1.25rem;">
               <div style="display: flex; gap: 8px; margin-bottom: 1rem;">
@@ -82,11 +106,13 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
                   <span class="material-icons-round" style="font-size:16px;">add</span> Agregar
                 </button>
               </div>
-              <div class="table-container">
+
+              <div class="section-title">Unidades Activas</div>
+              <div class="table-container mb-4">
                 <table class="table">
-                  <thead><tr><th>Nombre</th><th>Abreviatura</th><th class="text-center">Acciones</th></tr></thead>
+                  <thead><tr><th>Nombre</th><th>Abreviatura</th><th class="text-center" style="width:120px;">Acciones</th></tr></thead>
                   <tbody>
-                    @for (uni of unidades(); track uni.id) {
+                    @for (uni of unidadesActivas(); track uni.id) {
                       <tr>
                         <td>
                           @if (editandoUniId === uni.id) {
@@ -104,15 +130,37 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
                         </td>
                         <td class="text-center">
                           @if (editandoUniId === uni.id) {
-                            <button class="btn-icon" (click)="guardarUnidad(uni)"><span class="material-icons-round" style="color:#4ade80">check</span></button>
-                            <button class="btn-icon" (click)="editandoUniId = null"><span class="material-icons-round" style="color:#f87171">close</span></button>
+                            <button class="btn-icon" (click)="guardarUnidad(uni)" title="Guardar"><span class="material-icons-round" style="color:#4ade80">check</span></button>
+                            <button class="btn-icon" (click)="editandoUniId = null" title="Cancelar"><span class="material-icons-round" style="color:#f87171">close</span></button>
                           } @else {
-                            <button class="btn-icon" (click)="iniciarEditUnidad(uni)"><span class="material-icons-round" style="color:#60a5fa">edit</span></button>
+                            <button class="btn-icon" (click)="iniciarEditUnidad(uni)" title="Editar"><span class="material-icons-round" style="color:#60a5fa">edit</span></button>
+                            <button class="btn-icon" (click)="eliminarUni(uni)" title="Desactivar"><span class="material-icons-round" style="color:#f87171">block</span></button>
                           }
                         </td>
                       </tr>
                     } @empty {
-                      <tr><td colspan="3" class="text-center" style="padding:1.5rem;color:var(--text-muted)">Sin unidades</td></tr>
+                      <tr><td colspan="3" class="text-center" style="padding:1rem;color:var(--text-muted)">No hay unidades activas</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="section-title" style="color:#f87171">Unidades Desactivadas</div>
+              <div class="table-container">
+                <table class="table">
+                  <thead><tr><th>Nombre</th><th>Abrev.</th><th class="text-center" style="width:120px;">Acciones</th></tr></thead>
+                  <tbody>
+                    @for (uni of unidadesInactivas(); track uni.id) {
+                      <tr style="opacity:0.7">
+                        <td><span class="font-medium">{{ uni.nombre }}</span></td>
+                        <td>{{ uni.abreviatura }}</td>
+                        <td class="text-center">
+                          <button class="btn-icon" (click)="activarUni(uni)" title="Reactivar"><span class="material-icons-round" style="color:#4ade80">settings_backup_restore</span></button>
+                          <button class="btn-icon" (click)="eliminarUni(uni)" title="Eliminar Permanente"><span class="material-icons-round" style="color:#f87171">delete_forever</span></button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="3" class="text-center" style="padding:1rem;color:var(--text-muted)">No hay unidades desactivadas</td></tr>
                     }
                   </tbody>
                 </table>
@@ -120,23 +168,53 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
             </div>
           </mat-tab>
 
-          <!-- PROVEEDORES -->
+          <!-- ===== PROVEEDORES ===== -->
           <mat-tab label="Proveedores">
             <div style="padding: 1.25rem;">
-              <div style="display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap;">
-                <input [(ngModel)]="nuevoProvNombre" class="form-control" placeholder="Razón Social..." style="flex:1; min-width:180px;">
-                <input [(ngModel)]="nuevoProvRuc" class="form-control" placeholder="RUC" style="width:140px;">
-                <input [(ngModel)]="nuevoProvTelefono" class="form-control" placeholder="Teléfono" style="width:120px;">
-                <button class="btn btn-primary" style="padding: 0.4rem 0.85rem;" (click)="agregarProveedor()" [disabled]="!nuevoProvNombre.trim()">
-                  <span class="material-icons-round" style="font-size:16px;">add</span> Agregar
-                </button>
+              <!-- Formulario simplificado -->
+              <div style="padding: 1rem; background: var(--bg-tertiary); border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 1rem;">
+                <p class="text-xs font-bold" style="color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem;">Nuevo Proveedor</p>
+                <div style="display: flex; gap: 8px; align-items: flex-end; margin-bottom: 0.75rem;">
+                  <div class="form-group" style="margin-bottom:0; width:160px;">
+                    <label class="text-xs">RUC *</label>
+                    <div style="display:flex; gap:4px;">
+                      <input [(ngModel)]="nuevoProvRuc" class="form-control" maxlength="11"
+                             (keypress)="soloNumeros($event)"
+                             placeholder="20601030013" style="padding: 6px 8px;">
+                      <button class="btn btn-primary" style="padding: 4px 8px; white-space:nowrap;" (click)="buscarRuc()" [disabled]="nuevoProvRuc.length !== 11 || buscandoRuc()">
+                        <span class="material-icons-round" style="font-size:16px;">search</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom:0; flex:1;">
+                    <label class="text-xs">Razón Social</label>
+                    <input [(ngModel)]="nuevoProvNombre" class="form-control" placeholder="Se llenará automáticamente..." style="padding: 6px 8px;" readonly>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-end;">
+                  <div class="form-group" style="margin-bottom:0; flex:1;">
+                    <label class="text-xs">Dirección</label>
+                    <input [(ngModel)]="nuevoProvDireccion" class="form-control" placeholder="Se llenará automáticamente..." style="padding: 6px 8px;" readonly>
+                  </div>
+                  <div class="form-group" style="margin-bottom:0; width:140px;">
+                    <label class="text-xs">Teléfono</label>
+                    <input [(ngModel)]="nuevoProvTelefono" class="form-control" placeholder="999999999" style="padding: 6px 8px;"
+                           (keypress)="soloNumeros($event)" maxlength="9">
+                  </div>
+                  <button class="btn btn-primary" style="padding: 6px 14px;" (click)="agregarProveedor()" [disabled]="!nuevoProvNombre.trim()">
+                    <span class="material-icons-round" style="font-size:16px;">add</span> Agregar
+                  </button>
+                </div>
               </div>
-              <div class="table-container">
+
+              <div class="section-title">Proveedores Activos</div>
+              <div class="table-container mb-4">
                 <table class="table">
-                  <thead><tr><th>Razón Social</th><th>RUC</th><th>Contacto</th><th>Teléfono</th><th class="text-center">Acciones</th></tr></thead>
+                  <thead><tr><th>RUC</th><th>Razón Social</th><th>Teléfono</th><th class="text-center" style="width:120px;">Acciones</th></tr></thead>
                   <tbody>
-                    @for (prov of proveedores(); track prov.id) {
+                    @for (prov of proveedoresActivos(); track prov.id) {
                       <tr>
+                        <td class="text-xs">{{ prov.ruc || '—' }}</td>
                         <td>
                           @if (editandoProvId === prov.id) {
                             <input [(ngModel)]="editProvNombre" class="form-control" style="padding:4px 8px;">
@@ -146,30 +224,45 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
                         </td>
                         <td>
                           @if (editandoProvId === prov.id) {
-                            <input [(ngModel)]="editProvRuc" class="form-control" style="padding:4px 8px; width: 130px;">
-                          } @else {
-                            {{ prov.ruc || '—' }}
-                          }
-                        </td>
-                        <td>{{ prov.contacto || '—' }}</td>
-                        <td>
-                          @if (editandoProvId === prov.id) {
-                            <input [(ngModel)]="editProvTelefono" class="form-control" style="padding:4px 8px; width:120px;">
+                            <input [(ngModel)]="editProvTelefono" class="form-control" style="padding:4px 8px; width:120px;"
+                                   (keypress)="soloNumeros($event)" maxlength="9">
                           } @else {
                             {{ prov.telefono || '—' }}
                           }
                         </td>
                         <td class="text-center">
                           @if (editandoProvId === prov.id) {
-                            <button class="btn-icon" (click)="guardarProveedor(prov)"><span class="material-icons-round" style="color:#4ade80">check</span></button>
-                            <button class="btn-icon" (click)="editandoProvId = null"><span class="material-icons-round" style="color:#f87171">close</span></button>
+                            <button class="btn-icon" (click)="guardarProveedor(prov)" title="Guardar"><span class="material-icons-round" style="color:#4ade80">check</span></button>
+                            <button class="btn-icon" (click)="editandoProvId = null" title="Cancelar"><span class="material-icons-round" style="color:#f87171">close</span></button>
                           } @else {
-                            <button class="btn-icon" (click)="iniciarEditProveedor(prov)"><span class="material-icons-round" style="color:#60a5fa">edit</span></button>
+                            <button class="btn-icon" (click)="iniciarEditProveedor(prov)" title="Editar"><span class="material-icons-round" style="color:#60a5fa">edit</span></button>
+                            <button class="btn-icon" (click)="eliminarProv(prov)" title="Desactivar"><span class="material-icons-round" style="color:#f87171">block</span></button>
                           }
                         </td>
                       </tr>
                     } @empty {
-                      <tr><td colspan="5" class="text-center" style="padding:1.5rem;color:var(--text-muted)">Sin proveedores</td></tr>
+                      <tr><td colspan="4" class="text-center" style="padding:1rem;color:var(--text-muted)">No hay proveedores activos</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="section-title" style="color:#f87171">Proveedores Desactivados</div>
+              <div class="table-container">
+                <table class="table">
+                  <thead><tr><th>RUC</th><th>Razón Social</th><th class="text-center" style="width:120px;">Acciones</th></tr></thead>
+                  <tbody>
+                    @for (prov of proveedoresInactivos(); track prov.id) {
+                      <tr style="opacity:0.7">
+                        <td class="text-xs">{{ prov.ruc }}</td>
+                        <td><span class="font-medium">{{ prov.razonSocial }}</span></td>
+                        <td class="text-center">
+                          <button class="btn-icon" (click)="activarProv(prov)" title="Reactivar"><span class="material-icons-round" style="color:#4ade80">settings_backup_restore</span></button>
+                          <button class="btn-icon" (click)="eliminarProv(prov)" title="Eliminar Permanente"><span class="material-icons-round" style="color:#f87171">delete_forever</span></button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="3" class="text-center" style="padding:1rem;color:var(--text-muted)">No hay proveedores desactivados</td></tr>
                     }
                   </tbody>
                 </table>
@@ -186,33 +279,54 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
       background-color: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
     }
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-primary-400);
+      margin-bottom: 0.5rem;
+      margin-top: 1rem;
+    }
+    .mb-4 { margin-bottom: 1rem; }
   `]
 })
 export class GestionCatalogosDialogComponent implements OnInit {
-  categorias = signal<CategoriaProducto[]>([]);
-  unidades = signal<UnidadMedida[]>([]);
-  proveedores = signal<Proveedor[]>([]);
+  todasCategorias = signal<CategoriaProducto[]>([]);
+  todasUnidades = signal<UnidadMedida[]>([]);
+  todosProveedores = signal<Proveedor[]>([]);
 
-  // Categorias add/edit
+  // Computed filters
+  categoriasActivas = computed(() => this.todasCategorias().filter(c => c.activo));
+  categoriasInactivas = computed(() => this.todasCategorias().filter(c => !c.activo));
+  
+  unidadesActivas = computed(() => this.todasUnidades().filter(u => u.activo));
+  unidadesInactivas = computed(() => this.todasUnidades().filter(u => !u.activo));
+
+  proveedoresActivos = computed(() => this.todosProveedores().filter(p => p.activo));
+  proveedoresInactivos = computed(() => this.todosProveedores().filter(p => !p.activo));
+
+  // Categorias
   nuevaCategoriaNombre = '';
   editandoCatId: number | null = null;
   editCatNombre = '';
   editCatDesc = '';
 
-  // Unidades add/edit
+  // Unidades
   nuevaUnidadNombre = '';
   nuevaUnidadAbrev = '';
   editandoUniId: number | null = null;
   editUniNombre = '';
   editUniAbrev = '';
 
-  // Proveedores add/edit
+  // Proveedores
   nuevoProvNombre = '';
   nuevoProvRuc = '';
   nuevoProvTelefono = '';
+  nuevoProvDireccion = '';
+  buscandoRuc = signal(false);
   editandoProvId: number | null = null;
   editProvNombre = '';
-  editProvRuc = '';
   editProvTelefono = '';
 
   constructor(
@@ -226,12 +340,19 @@ export class GestionCatalogosDialogComponent implements OnInit {
   }
 
   cargar() {
-    this.catalogoService.listarCategorias().subscribe(r => this.categorias.set(r));
-    this.catalogoService.listarUnidades().subscribe(r => this.unidades.set(r));
-    this.catalogoService.listarProveedores().subscribe(r => this.proveedores.set(r));
+    this.catalogoService.listarCategoriasTodas().subscribe(r => this.todasCategorias.set(r));
+    this.catalogoService.listarUnidadesTodas().subscribe(r => this.todasUnidades.set(r));
+    this.catalogoService.listarProveedoresTodas().subscribe(r => this.todosProveedores.set(r));
   }
 
-  // ---- Categorías ----
+  soloNumeros(event: KeyboardEvent) {
+    const char = event.key;
+    if (!/[0-9]/.test(char)) {
+      event.preventDefault();
+    }
+  }
+
+  // ========== CATEGORÍAS ==========
   agregarCategoria() {
     this.catalogoService.crearCategoria({ nombre: this.nuevaCategoriaNombre.trim() }).subscribe({
       next: () => { this.nuevaCategoriaNombre = ''; this.cargar(); this.msg('Categoría creada'); },
@@ -252,7 +373,24 @@ export class GestionCatalogosDialogComponent implements OnInit {
     });
   }
 
-  // ---- Unidades ----
+  activarCat(cat: CategoriaProducto) {
+    this.catalogoService.activarCategoria(cat.id).subscribe({
+      next: () => { this.cargar(); this.msg('Categoría reactivada'); },
+      error: () => this.msg('Error al reactivar')
+    });
+  }
+
+  eliminarCat(cat: CategoriaProducto) {
+    this.catalogoService.eliminarCategoria(cat.id).subscribe({
+      next: (res) => { this.cargar(); this.msg(res.mensaje); },
+      error: (err) => {
+        const errorMsg = err?.error?.message || 'Error al eliminar';
+        this.msg(errorMsg);
+      }
+    });
+  }
+
+  // ========== UNIDADES ==========
   agregarUnidad() {
     this.catalogoService.crearUnidad({ nombre: this.nuevaUnidadNombre.trim(), abreviatura: this.nuevaUnidadAbrev.trim() || '?' }).subscribe({
       next: () => { this.nuevaUnidadNombre = ''; this.nuevaUnidadAbrev = ''; this.cargar(); this.msg('Unidad creada'); },
@@ -273,15 +411,50 @@ export class GestionCatalogosDialogComponent implements OnInit {
     });
   }
 
-  // ---- Proveedores ----
+  activarUni(uni: UnidadMedida) {
+    this.catalogoService.activarUnidad(uni.id).subscribe({
+      next: () => { this.cargar(); this.msg('Unidad reactivada'); },
+      error: () => this.msg('Error al reactivar')
+    });
+  }
+
+  eliminarUni(uni: UnidadMedida) {
+    this.catalogoService.eliminarUnidad(uni.id).subscribe({
+      next: (res) => { this.cargar(); this.msg(res.mensaje); },
+      error: (err) => {
+        const errorMsg = err?.error?.message || 'Error al eliminar';
+        this.msg(errorMsg);
+      }
+    });
+  }
+
+  // ========== PROVEEDORES ==========
+  buscarRuc() {
+    if (this.nuevoProvRuc.length !== 11) return;
+    this.buscandoRuc.set(true);
+    this.catalogoService.consultarRuc(this.nuevoProvRuc).subscribe({
+      next: (res) => {
+        this.nuevoProvNombre = res.razon_social || '';
+        this.nuevoProvDireccion = res.direccion || '';
+        this.buscandoRuc.set(false);
+        this.msg('Datos del RUC obtenidos correctamente');
+      },
+      error: () => {
+        this.buscandoRuc.set(false);
+        this.msg('No se encontró el RUC o hubo un error');
+      }
+    });
+  }
+
   agregarProveedor() {
     this.catalogoService.crearProveedor({
       razonSocial: this.nuevoProvNombre.trim(),
       ruc: this.nuevoProvRuc.trim(),
-      telefono: this.nuevoProvTelefono.trim()
+      telefono: this.nuevoProvTelefono.trim(),
+      direccion: this.nuevoProvDireccion.trim()
     }).subscribe({
       next: () => {
-        this.nuevoProvNombre = ''; this.nuevoProvRuc = ''; this.nuevoProvTelefono = '';
+        this.nuevoProvNombre = ''; this.nuevoProvRuc = ''; this.nuevoProvTelefono = ''; this.nuevoProvDireccion = '';
         this.cargar(); this.msg('Proveedor creado');
       },
       error: () => this.msg('Error al crear proveedor')
@@ -291,18 +464,35 @@ export class GestionCatalogosDialogComponent implements OnInit {
   iniciarEditProveedor(prov: Proveedor) {
     this.editandoProvId = prov.id;
     this.editProvNombre = prov.razonSocial;
-    this.editProvRuc = prov.ruc || '';
     this.editProvTelefono = prov.telefono || '';
   }
 
   guardarProveedor(prov: Proveedor) {
     this.catalogoService.actualizarProveedor(prov.id, {
       razonSocial: this.editProvNombre,
-      ruc: this.editProvRuc,
-      telefono: this.editProvTelefono
+      ruc: prov.ruc,
+      telefono: this.editProvTelefono,
+      direccion: prov.direccion
     }).subscribe({
       next: () => { this.editandoProvId = null; this.cargar(); this.msg('Proveedor actualizado'); },
       error: () => this.msg('Error al actualizar')
+    });
+  }
+
+  activarProv(prov: Proveedor) {
+    this.catalogoService.activarProveedor(prov.id).subscribe({
+      next: () => { this.cargar(); this.msg('Proveedor reactivado'); },
+      error: () => this.msg('Error al reactivar')
+    });
+  }
+
+  eliminarProv(prov: Proveedor) {
+    this.catalogoService.eliminarProveedor(prov.id).subscribe({
+      next: (res) => { this.cargar(); this.msg(res.mensaje); },
+      error: (err) => {
+        const errorMsg = err?.error?.message || 'Error al eliminar';
+        this.msg(errorMsg);
+      }
     });
   }
 

@@ -8,6 +8,7 @@ import { ProductoService } from '../../services/producto.service';
 import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../../services/catalogo.service';
 import { InventarioService, LoteInventario, MovimientoInventario } from '../../services/inventario.service';
 import { IngresoStockDialogComponent } from '../ingreso-stock-dialog/ingreso-stock-dialog.component';
+import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-dialog.component';
 
 @Component({
   selector: 'app-producto-dialog',
@@ -111,10 +112,16 @@ import { IngresoStockDialogComponent } from '../ingreso-stock-dialog/ingreso-sto
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                   <h3 style="font-weight: 600; color: var(--text-primary); margin: 0;">Lotes Activos</h3>
-                  <button class="btn btn-primary" style="padding: 0.4rem 0.85rem;" (click)="abrirIngresoStock()">
-                    <span class="material-icons-round" style="font-size: 16px;">add_box</span>
-                    Registrar Ingreso
-                  </button>
+                  <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-secondary" style="padding: 0.4rem 0.85rem; color: #f87171; border-color: rgba(248,113,113,0.3);" (click)="abrirSalidaStock()">
+                      <span class="material-icons-round" style="font-size: 16px;">remove_circle_outline</span>
+                      Salida / Ajuste
+                    </button>
+                    <button class="btn btn-primary" style="padding: 0.4rem 0.85rem;" (click)="abrirIngresoStock()">
+                      <span class="material-icons-round" style="font-size: 16px;">add_box</span>
+                      Registrar Ingreso
+                    </button>
+                  </div>
                 </div>
 
                 <div class="table-container">
@@ -293,7 +300,20 @@ export class ProductoDialogComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe(res => {
-      if (res) this.cargarLotes();
+      if (res) { this.cargarLotes(); this.cargarMovimientos(); }
+    });
+  }
+
+  abrirSalidaStock() {
+    const dialogRef = this.dialog.open(SalidaStockDialogComponent, {
+      width: '500px',
+      data: {
+        producto: this.data.producto
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(res => {
+      if (res) { this.cargarLotes(); this.cargarMovimientos(); }
     });
   }
 

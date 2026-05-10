@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import jakarta.validation.Valid;
 import com.veterinaria.dtos.InventarioRequestDTO;
 import com.veterinaria.dtos.IngresoStockDTO;
+import com.veterinaria.dtos.SalidaStockDTO;
 import com.veterinaria.servicios.InventarioServicio;
 import com.veterinaria.modelos.InventarioSede;
 import com.veterinaria.dtos.LoteInventarioResponseDTO;
@@ -47,5 +48,12 @@ public class InventarioController {
     @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
     public List<MovimientoInventarioResponseDTO> obtenerMovimientos(@PathVariable Long productoId, @PathVariable Long sedeId) {
         return inventarioServicio.obtenerMovimientos(productoId, sedeId);
+    }
+
+    @PostMapping("/salida")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
+    public void registrarSalidaAjuste(@Valid @RequestBody SalidaStockDTO dto, Principal principal) {
+        inventarioServicio.registrarSalidaAjuste(dto, principal.getName());
     }
 }

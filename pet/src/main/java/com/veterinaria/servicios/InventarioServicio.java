@@ -10,6 +10,7 @@ import java.util.List;
 
 import com.veterinaria.dtos.InventarioRequestDTO;
 import com.veterinaria.dtos.IngresoStockDTO;
+import com.veterinaria.dtos.SalidaStockDTO;
 import com.veterinaria.dtos.LoteInventarioResponseDTO;
 import com.veterinaria.dtos.MovimientoInventarioResponseDTO;
 import com.veterinaria.modelos.InventarioSede;
@@ -130,7 +131,7 @@ public class InventarioServicio {
     }
 
     public List<LoteInventarioResponseDTO> obtenerLotesActivos(Long productoId, Long sedeId) {
-        return loteRepositorio.findByProductoIdAndSedeIdAndActivoTrueOrderByFechaVencimientoAsc(productoId, sedeId)
+        return loteRepositorio.findLotesParaFIFO(productoId, sedeId)
                 .stream()
                 .map(lote -> new LoteInventarioResponseDTO(
                         lote.getId(),
@@ -156,5 +157,71 @@ public class InventarioServicio {
                                 : "Sistema"
                 ))
                 .toList();
+    }
+
+    @Transactional
+    public void registrarSalidaAjuste(SalidaStockDTO dto, String emailResponsable) {
+        Producto producto = productoRepositorio.findById(dto.getProductoId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
+        Sede sede = sedeRepositorio.findById(dto.getSedeId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
+
+        Empleado responsable = empleadoRepositorio.findByUsuarioEmail(emailResponsable).orElse(null);
+
+        TipoMovimiento tipo = TipoMovimiento.valueOf(dto.getTipoMovimiento());
+
+        boolean esSalida = tipo == TipoMovimiento.SALIDA_CONSUMO_INTERNO
+                || tipo == TipoMovimiento.AJUSTE_NEGATIVO
+                || tipo == TipoMovimiento.MERMA_VENCIMIENTO;
+
+        // Actualizar inventario global
+        InventarioSede inventario = inventarioSedeRepositorio.findByProductoIdAndSedeId(producto.getId(), sede.getId())
+                .orElseGet(() -> {
+                    InventarioSede nuevo = new InventarioSede();
+                    nuevo.setProducto(producto);
+                    nuevo.setSede(sede);
+                    nuevo.setStockActual(BigDecimal.ZERO);
+                    nuevo.setStockMinimo(BigDecimal.ZERO);
+                    return nuevo;
+                });
+
+        if (esSalida) {
+            if (inventario.getStockActual().compareTo(dto.getCantidad()) < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock insuficiente para esta salida.");
+            }
+            inventario.setStockActual(inventario.getStockActual().subtract(dto.getCantidad()));
+
+            // Descontar FIFO de lotes
+            List<LoteInventario> lotes = loteRepositorio.findLotesParaFIFO(producto.getId(), sede.getId());
+            BigDecimal restante = dto.getCantidad();
+            for (LoteInventario lote : lotes) {
+                if (restante.compareTo(BigDecimal.ZERO) <= 0) break;
+                BigDecimal disponible = lote.getStockRestante();
+                if (disponible.compareTo(restante) >= 0) {
+                    lote.setStockRestante(disponible.subtract(restante));
+                    restante = BigDecimal.ZERO;
+                } else {
+                    restante = restante.subtract(disponible);
+                    lote.setStockRestante(BigDecimal.ZERO);
+                    lote.setActivo(false);
+                }
+                loteRepositorio.save(lote);
+            }
+        } else {
+            // Ajuste positivo
+            inventario.setStockActual(inventario.getStockActual().add(dto.getCantidad()));
+        }
+        inventarioSedeRepositorio.save(inventario);
+
+        // Registrar movimiento de Kardex
+        MovimientoInventario movimiento = new MovimientoInventario();
+        movimiento.setProducto(producto);
+        movimiento.setSede(sede);
+        movimiento.setTipoMovimiento(tipo);
+        movimiento.setCantidad(dto.getCantidad());
+        movimiento.setMotivo(dto.getMotivo());
+        movimiento.setFecha(LocalDateTime.now());
+        movimiento.setResponsable(responsable);
+        movimientoRepositorio.save(movimiento);
     }
 }

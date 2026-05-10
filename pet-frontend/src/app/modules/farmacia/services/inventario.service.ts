@@ -20,8 +20,16 @@ export interface IngresoStockDTO {
   sedeId: number;
   proveedorId?: number | null;
   numeroLote: string;
-  fechaVencimiento: string;
+  fechaVencimiento?: string | null;
   cantidadComprada: number;
+  motivo?: string;
+}
+
+export interface SalidaStockDTO {
+  productoId: number;
+  sedeId: number;
+  cantidad: number;
+  tipoMovimiento: string;
   motivo?: string;
 }
 
@@ -63,5 +71,9 @@ export class InventarioService {
 
   obtenerMovimientos(productoId: number, sedeId: number): Observable<MovimientoInventario[]> {
     return this.http.get<MovimientoInventario[]>(`${this.apiUrl}/producto/${productoId}/sede/${sedeId}/movimientos`);
+  }
+
+  registrarSalidaAjuste(dto: SalidaStockDTO): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/salida`, dto);
   }
 }

@@ -30,7 +30,7 @@ public class LoteInventario {
     @Column(nullable = false)
     private String numeroLote;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private LocalDate fechaVencimiento;
 
     @Column(nullable = false)

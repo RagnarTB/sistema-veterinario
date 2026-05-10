@@ -250,6 +250,7 @@ public class VentaServicio {
         // Devolver stock SOLO de los ítems que son productos físicos
         for (DetalleVenta detalle : venta.getDetalles()) {
             if (detalle.getProducto() != null) {
+                // 1. Aumentar stock global
                 InventarioSede inventario = inventarioSedeRepositorio.findByProductoIdAndSedeId(detalle.getProducto().getId(), venta.getCaja().getSede().getId())
                         .orElse(null);
                 if (inventario != null) {
@@ -257,7 +258,18 @@ public class VentaServicio {
                     inventarioSedeRepositorio.save(inventario);
                 }
 
-                // Registrar movimiento de Kardex por anulación
+                // 2. Devolver stock al lote más reciente (o al que no esté vencido)
+                List<LoteInventario> lotes = loteInventarioRepositorio.findByProductoIdAndSedeIdOrderByFechaVencimientoDesc(
+                    detalle.getProducto().getId(), venta.getCaja().getSede().getId());
+                
+                if (!lotes.isEmpty()) {
+                    LoteInventario loteDestino = lotes.get(0); // El más nuevo o con vencimiento más lejano
+                    loteDestino.setStockRestante(loteDestino.getStockRestante().add(detalle.getCantidad()));
+                    loteDestino.setActivo(true);
+                    loteInventarioRepositorio.save(loteDestino);
+                }
+
+                // 3. Registrar movimiento de Kardex por anulación
                 MovimientoInventario movKardex = new MovimientoInventario();
                 movKardex.setProducto(detalle.getProducto());
                 movKardex.setSede(venta.getCaja().getSede());
@@ -268,7 +280,6 @@ public class VentaServicio {
                 movKardex.setResponsable(empleadoActual);
                 movimientoInventarioRepositorio.save(movKardex);
             }
-            // Los servicios no tienen stock → no hay nada que devolver
         }
 
         MovimientoCaja egreso = new MovimientoCaja();
@@ -330,8 +341,7 @@ public class VentaServicio {
     // FIFO: Descontar stock de los lotes más antiguos (próximos a vencer)
     // =========================
     private void descontarStockFIFO(Long productoId, Long sedeId, BigDecimal cantidadRequerida) {
-        List<LoteInventario> lotes = loteInventarioRepositorio
-                .findByProductoIdAndSedeIdAndActivoTrueOrderByFechaVencimientoAsc(productoId, sedeId);
+        List<LoteInventario> lotes = loteInventarioRepositorio.findLotesParaFIFO(productoId, sedeId);
 
         BigDecimal restante = cantidadRequerida;
 
