@@ -46,7 +46,6 @@ export interface EmpleadoDialogData {
     DiasBloqueadosComponent
   ],
   template: `
-    <!-- ===== PASO 1: FORMULARIO ===== -->
     @if (paso() === 'formulario') {
       <h2 mat-dialog-title class="dialog-title">
         <span class="material-icons-round text-primary">
@@ -61,14 +60,12 @@ export interface EmpleadoDialogData {
             <ng-container *ngTemplateOutlet="formTemplate"></ng-container>
           </mat-tab>
           <mat-tab label="Horarios">
-            <!-- Sección de horarios, implementada en el componente hijo -->
             <app-horarios-veterinario 
               [veterinarioId]="data.empleado?.id || 0" 
               [sedes]="sedes()">
             </app-horarios-veterinario>
           </mat-tab>
           <mat-tab label="Días Bloqueados">
-            <!-- Sección de días bloqueados, implementada en el componente hijo -->
             <app-dias-bloqueados 
               [veterinarioId]="data.empleado?.id || 0">
             </app-dias-bloqueados>
@@ -80,7 +77,6 @@ export interface EmpleadoDialogData {
         </ng-template>
 
         <ng-template #formTemplate>
-        <!-- BANNER: DNI ya pertenece a cliente -->
         @if (dniEsCliente()) {
           <div class="ascenso-banner">
             <mat-icon class="banner-icon">info</mat-icon>
@@ -93,12 +89,11 @@ export interface EmpleadoDialogData {
 
         <form [formGroup]="form" class="form-grid py-2">
 
-          <!-- DNI y Buscador RENIEC -->
           <div class="dni-search-container col-span-2">
             <mat-form-field appearance="outline" class="dni-field">
               <mat-label>DNI</mat-label>
               <mat-icon matPrefix>badge</mat-icon>
-              <input matInput formControlName="dni" [readonly]="isEdit()" placeholder="Ej. 12345678" maxlength="8" required />
+              <input matInput formControlName="dni" [readonly]="isEdit()" placeholder="Ej. 12345678" maxlength="8" (input)="form.get('dni')?.markAsTouched()" required (keydown)="soloNumeros($event)"/>
               <mat-error *ngIf="form.get('dni')?.hasError('required')">El DNI es obligatorio</mat-error>
               <mat-error *ngIf="form.get('dni')?.hasError('pattern')">Debe tener 8 dígitos</mat-error>
             </mat-form-field>
@@ -112,21 +107,18 @@ export interface EmpleadoDialogData {
             </button>
           </div>
 
-          <!-- Nombre -->
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>Nombre</mat-label>
             <mat-icon matPrefix>person</mat-icon>
-            <input matInput formControlName="nombre" [readonly]="dniEsCliente() || isEdit()" />
+            <input matInput formControlName="nombre" [readonly]="dniEsCliente() || isEdit()" (keydown)="soloLetras($event)" />
           </mat-form-field>
 
-          <!-- Apellido -->
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>Apellido</mat-label>
             <mat-icon matPrefix>person_outline</mat-icon>
-            <input matInput formControlName="apellido" [readonly]="dniEsCliente() || isEdit()" />
+            <input matInput formControlName="apellido" [readonly]="dniEsCliente() || isEdit()" (keydown)="soloLetras($event)" />
           </mat-form-field>
 
-          <!-- Correo Electrónico -->
           <mat-form-field appearance="outline" class="w-full col-span-2">
             <mat-label>Correo Electrónico</mat-label>
             <mat-icon matPrefix>mail_outline</mat-icon>
@@ -136,29 +128,25 @@ export interface EmpleadoDialogData {
             }
           </mat-form-field>
 
-          <!-- Teléfono -->
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>Teléfono</mat-label>
             <mat-icon matPrefix>phone</mat-icon>
-            <input matInput formControlName="telefono" maxlength="9" required />
+            <input matInput formControlName="telefono" maxlength="9" (input)="form.get('telefono')?.markAsTouched()" required (keydown)="soloNumeros($event)"/>
             <mat-error *ngIf="form.get('telefono')?.hasError('pattern')">Debe tener exactamente 9 dígitos numéricos</mat-error>
           </mat-form-field>
 
-          <!-- Sueldo Base -->
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>Sueldo Base (Opcional)</mat-label>
             <mat-icon matPrefix>payments</mat-icon>
             <input matInput type="number" formControlName="sueldoBase" />
           </mat-form-field>
 
-          <!-- Especialidad -->
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>Especialidad (Opcional)</mat-label>
             <mat-icon matPrefix>work_outline</mat-icon>
-            <input matInput formControlName="especialidad" style="text-transform: uppercase;" />
+            <input matInput formControlName="especialidad" style="text-transform: uppercase;" (keydown)="soloLetras($event)"/>
           </mat-form-field>
 
-          <!-- Sedes Asignadas -->
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>Sedes Asignadas</mat-label>
             <mat-icon matPrefix>storefront</mat-icon>
@@ -169,7 +157,6 @@ export interface EmpleadoDialogData {
             </mat-select>
           </mat-form-field>
 
-          <!-- Roles Asignados -->
           <mat-form-field appearance="outline" class="w-full col-span-2">
             <mat-label>Roles Asignados</mat-label>
             <mat-icon matPrefix>shield</mat-icon>
@@ -180,7 +167,6 @@ export interface EmpleadoDialogData {
             </mat-select>
           </mat-form-field>
 
-          <!-- SECCIÓN DINÁMICA: Campos Veterinario -->
           @if (esVeterinario()) {
             <div class="col-span-2 vet-section">
               <div class="vet-section-title">
@@ -204,7 +190,6 @@ export interface EmpleadoDialogData {
                 </button>
               </div>
 
-              <!-- Resultado de validación -->
               @if (colegiaturaResultado()) {
                 <div class="colegiatura-resultado" [class.valido]="colegiaturaResultado()?.habilitado" [class.invalido]="!colegiaturaResultado()?.habilitado">
                   <mat-icon>{{ colegiaturaResultado()?.habilitado ? 'check_circle' : 'cancel' }}</mat-icon>
@@ -233,7 +218,6 @@ export interface EmpleadoDialogData {
       </mat-dialog-actions>
     }
 
-    <!-- ===== PASO 2: CONFIRMACIÓN ===== -->
     @if (paso() === 'confirmacion') {
       <h2 mat-dialog-title class="dialog-title">
         <span class="material-icons-round text-primary">fact_check</span>
@@ -577,5 +561,21 @@ export class EmpleadoDialogComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  soloNumeros(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[0-9]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+
+  soloLetras(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
   }
 }

@@ -25,7 +25,6 @@ import { MatIconModule } from '@angular/material/icon';
     MatSnackBarModule
   ],
   template: `
-    <!-- El título cambia dependiendo del paso -->
     <h2 mat-dialog-title class="dialog-title">
       <span class="material-icons-round">
         {{ pasoActual === 1 ? (isEdit ? 'edit' : 'person_add') : 'verified' }}
@@ -33,9 +32,6 @@ import { MatIconModule } from '@angular/material/icon';
       {{ pasoActual === 1 ? (isEdit ? 'Editar Cliente' : 'Nuevo Cliente') : 'Confirmar Datos' }}
     </h2>
 
-    <!-- ===================================== -->
-    <!-- PASO 1: EL FORMULARIO                 -->
-    <!-- ===================================== -->
     <form [formGroup]="form" *ngIf="pasoActual === 1">
       <mat-dialog-content class="dialog-content-scroll">
         <p class="dialog-subtitle">
@@ -47,7 +43,7 @@ import { MatIconModule } from '@angular/material/icon';
             <mat-form-field appearance="outline" class="dni-field">
               <mat-label>DNI / Documento</mat-label>
               <mat-icon matPrefix class="prefix-icon">badge</mat-icon>
-              <input matInput formControlName="dni" placeholder="Ej. 12345678" required maxlength="8"/>
+              <input matInput formControlName="dni" placeholder="Ej. 12345678" required maxlength="8" (keydown)="soloNumeros($event)"/>
               <mat-error *ngIf="form.get('dni')?.hasError('required')">El DNI es obligatorio</mat-error>
               <mat-error *ngIf="form.get('dni')?.hasError('pattern')">Debe tener exactamente 8 dígitos numéricos</mat-error>
             </mat-form-field>
@@ -63,21 +59,21 @@ import { MatIconModule } from '@angular/material/icon';
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Nombre</mat-label>
             <mat-icon matPrefix class="prefix-icon">person</mat-icon>
-            <input matInput formControlName="nombre" placeholder="Ej. Juan" required />
+            <input matInput formControlName="nombre" placeholder="Ej. Juan" required (keydown)="soloLetras($event)"/>
             <mat-error *ngIf="form.get('nombre')?.hasError('required')">El nombre es obligatorio</mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Apellido</mat-label>
             <mat-icon matPrefix class="prefix-icon">person_outline</mat-icon>
-            <input matInput formControlName="apellido" placeholder="Ej. Pérez" required />
+            <input matInput formControlName="apellido" placeholder="Ej. Pérez" required (keydown)="soloLetras($event)"/>
             <mat-error *ngIf="form.get('apellido')?.hasError('required')">El apellido es obligatorio</mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Teléfono</mat-label>
             <mat-icon matPrefix class="prefix-icon">phone</mat-icon>
-            <input matInput formControlName="telefono" placeholder="Ej. 987654321" required maxlength="9"/>
+            <input matInput formControlName="telefono" placeholder="Ej. 987654321" required  maxlength="9" (keydown)="soloNumeros($event)"/>
             <mat-error *ngIf="form.get('telefono')?.hasError('required')">El teléfono es obligatorio</mat-error>
             <mat-error *ngIf="form.get('telefono')?.hasError('pattern')">Debe tener exactamente 9 dígitos numéricos</mat-error>
           </mat-form-field>
@@ -99,16 +95,12 @@ import { MatIconModule } from '@angular/material/icon';
       </mat-dialog-content>
       <mat-dialog-actions align="end" class="dialog-actions">
         <button mat-stroked-button type="button" (click)="onCancel()" class="btn-cancel">Cancelar</button>
-        <!-- NOTA: Ahora llama a irAResumen() en lugar de hacer submit -->
         <button mat-flat-button color="primary" type="button" (click)="irAResumen()" [disabled]="form.invalid || isSubmitting">
           Continuar
         </button>
       </mat-dialog-actions>
     </form>
 
-    <!-- ===================================== -->
-    <!-- PASO 2: EL RESUMEN DE CONFIRMACIÓN    -->
-    <!-- ===================================== -->
     <div *ngIf="pasoActual === 2">
       <mat-dialog-content class="dialog-content-scroll">
         <p class="dialog-subtitle">Verifica que los datos sean correctos antes de guardarlos en el sistema.</p>
@@ -123,11 +115,9 @@ import { MatIconModule } from '@angular/material/icon';
       </mat-dialog-content>
 
       <mat-dialog-actions align="end" class="dialog-actions">
-        <!-- Botón para regresar -->
         <button mat-stroked-button type="button" (click)="regresarAEditar()" class="btn-cancel">
           Regresar a editar
         </button>
-        <!-- Botón final de guardado -->
         <button mat-flat-button color="primary" type="button" (click)="confirmarYGuardar()" [disabled]="isSubmitting">
           <mat-icon style="margin-right: 4px;">save</mat-icon> Confirmar
         </button>
@@ -243,6 +233,24 @@ export class ClienteDialogComponent implements OnInit {
     });
   }
 
+  soloLetras(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+  
+  soloNumeros(event: KeyboardEvent): void {
+    const teclas_permitidas = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+    const patron = /^[0-9]$/;
+    if (!teclas_permitidas.includes(event.key) && !patron.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+
+    // Si estamos editando y el email / dni se usa para login, a veces no se debería poder editar, 
+    // pero lo dejamos habilitado a menos que el backend lo restrinja.
 
   irAResumen(): void {
     if (this.form.valid) {
