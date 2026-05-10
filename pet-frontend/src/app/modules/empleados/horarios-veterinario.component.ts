@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, signal } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, SimpleChanges, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
@@ -7,10 +7,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 
 import { HorarioService, HorarioVeterinarioRequest, HorarioVeterinarioResponse } from '../../core/services/horario.service';
 import { SedeResponse } from '../../core/models/models';
+import { ModalConfirmacionComponent } from '../../shared/components/modal-confirmacion/modal-confirmacion.component';
 
 @Component({
   selector: 'app-horarios-veterinario',
@@ -23,7 +26,8 @@ import { SedeResponse } from '../../core/models/models';
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule
+    MatSelectModule,
+    MatTabsModule
   ],
   template: `
     <div class="p-4">
@@ -97,7 +101,15 @@ import { SedeResponse } from '../../core/models/models';
         </div>
       </form>
 
-      <table mat-table [dataSource]="horarios()" class="w-full">
+      @if (sedes.length > 1) {
+        <mat-tab-group (selectedTabChange)="sedeFiltroId.set(sedes[$event.index].id)" class="mb-4">
+          @for (sede of sedes; track sede.id) {
+            <mat-tab [label]="sede.nombre"></mat-tab>
+          }
+        </mat-tab-group>
+      }
+
+      <table mat-table [dataSource]="horariosFiltrados()" class="w-full">
         <ng-container matColumnDef="sede">
           <th mat-header-cell *matHeaderCellDef> Sede </th>
           <td mat-cell *matCellDef="let element"> {{ getSedeNombre(element.sedeId) }} </td>
@@ -141,20 +153,31 @@ import { SedeResponse } from '../../core/models/models';
     </div>
   `
 })
-export class HorariosVeterinarioComponent implements OnInit {
+export class HorariosVeterinarioComponent implements OnInit, OnChanges {
   @Input() veterinarioId!: number;
   @Input() sedes: SedeResponse[] = [];
   
   form: FormGroup;
   loading = signal(false);
   horarios = signal<HorarioVeterinarioResponse[]>([]);
+  sedeFiltroId = signal<number>(0);
+  
+  horariosFiltrados = computed(() => {
+    const todos = this.horarios();
+    if (this.sedes.length === 1) return todos.filter(h => h.sedeId === this.sedes[0].id);
+    const filtro = this.sedeFiltroId();
+    if (filtro > 0) return todos.filter(h => h.sedeId === filtro);
+    return this.sedes.length > 0 ? todos.filter(h => h.sedeId === this.sedes[0].id) : todos;
+  });
+
   displayedColumns: string[] = ['sede', 'dia', 'horas', 'refrigerio', 'acciones'];
   horasDisponibles: string[] = [];
 
   constructor(
     private fb: FormBuilder,
     private horarioService: HorarioService,
-    private snack: MatSnackBar
+    private snack: MatSnackBar,
+    private dialog: MatDialog
   ) {
     this.form = this.fb.group({
       sedeId: ['', Validators.required],
@@ -170,8 +193,21 @@ export class HorariosVeterinarioComponent implements OnInit {
     this.generarHoras();
     if (this.sedes.length > 0) {
       this.form.get('sedeId')?.setValue(this.sedes[0].id);
+      this.sedeFiltroId.set(this.sedes[0].id);
     }
     this.cargarHorarios();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['sedes'] && this.sedes.length > 0) {
+      const currentSedeId = this.form.get('sedeId')?.value;
+      if (!this.sedes.find(s => s.id === currentSedeId)) {
+        this.form.get('sedeId')?.setValue(this.sedes[0].id);
+      }
+      if (!this.sedes.find(s => s.id === this.sedeFiltroId())) {
+        this.sedeFiltroId.set(this.sedes[0].id);
+      }
+    }
   }
 
   generarHoras() {
@@ -236,19 +272,35 @@ export class HorariosVeterinarioComponent implements OnInit {
       return;
     }
 
-    // Comprobar si ya existe un horario para ese día en esa sede
-    const existe = this.horarios().find(h => h.diaSemana === v.diaSemana && h.sedeId === v.sedeId);
+    // Comprobar si ya existe un horario para ese día en NINGUNA sede
+    const existe = this.horarios().find(h => h.diaSemana === v.diaSemana);
     if (existe) {
-      if (window.confirm('El veterinario ya tiene un horario registrado para este día en esta sede. ¿Desea reemplazarlo con el nuevo horario?')) {
-        this.loading.set(true);
-        this.horarioService.eliminar(existe.id).subscribe({
-          next: () => this.guardarNuevo(),
-          error: () => {
-            this.snack.open('Error al reemplazar horario existente', 'Cerrar', { duration: 3000 });
-            this.loading.set(false);
-          }
-        });
-      }
+      const msj = existe.sedeId === v.sedeId 
+        ? `El veterinario ya tiene un horario registrado para este día en esta sede. ¿Desea reemplazarlo con el nuevo horario?`
+        : `El veterinario ya trabaja el ${this.traducirDia(v.diaSemana)} en la sede ${this.getSedeNombre(existe.sedeId)}. Solo puede trabajar en una sede por día. ¿Desea reemplazar su sede y horario para este día?`;
+
+      const dialogRef = this.dialog.open(ModalConfirmacionComponent, {
+        width: '400px',
+        data: {
+          title: 'Reemplazar Horario',
+          message: msj,
+          confirmText: 'Sí, Reemplazar',
+          isDestructive: false
+        }
+      });
+
+      dialogRef.afterClosed().subscribe(confirmed => {
+        if (confirmed) {
+          this.loading.set(true);
+          this.horarioService.eliminar(existe.id).subscribe({
+            next: () => this.guardarNuevo(),
+            error: () => {
+              this.snack.open('Error al reemplazar horario existente', 'Cerrar', { duration: 3000 });
+              this.loading.set(false);
+            }
+          });
+        }
+      });
       return;
     }
 
@@ -287,15 +339,29 @@ export class HorariosVeterinarioComponent implements OnInit {
   }
 
   eliminar(id: number) {
-    this.loading.set(true);
-    this.horarioService.eliminar(id).subscribe({
-      next: () => {
-        this.snack.open('Horario eliminado', 'Cerrar', { duration: 3000 });
-        this.cargarHorarios();
-      },
-      error: () => {
-        this.snack.open('Error al eliminar', 'Cerrar', { duration: 3000 });
-        this.loading.set(false);
+    const dialogRef = this.dialog.open(ModalConfirmacionComponent, {
+      width: '400px',
+      data: {
+        title: 'Eliminar Horario',
+        message: '¿Estás seguro de que deseas eliminar este horario? Esta acción no se puede deshacer.',
+        confirmText: 'Sí, Eliminar',
+        isDestructive: true
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        this.loading.set(true);
+        this.horarioService.eliminar(id).subscribe({
+          next: () => {
+            this.snack.open('Horario eliminado', 'Cerrar', { duration: 3000 });
+            this.cargarHorarios();
+          },
+          error: () => {
+            this.snack.open('Error al eliminar', 'Cerrar', { duration: 3000 });
+            this.loading.set(false);
+          }
+        });
       }
     });
   }
