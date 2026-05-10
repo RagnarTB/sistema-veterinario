@@ -99,9 +99,12 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
           <!-- ===== UNIDADES ===== -->
           <mat-tab label="Unidades de Medida">
             <div style="padding: 1.25rem;">
-              <div style="display: flex; gap: 8px; margin-bottom: 1rem;">
+              <div style="display: flex; gap: 8px; margin-bottom: 1rem; align-items: center;">
                 <input [(ngModel)]="nuevaUnidadNombre" class="form-control" placeholder="Nombre..." style="flex:1;">
                 <input [(ngModel)]="nuevaUnidadAbrev" class="form-control" placeholder="Abrev." style="width:80px;">
+                <label style="display: flex; align-items: center; gap: 4px; font-size: 0.75rem; white-space: nowrap; cursor: pointer;">
+                  <input type="checkbox" [(ngModel)]="nuevaUnidadDec"> Decimales
+                </label>
                 <button class="btn btn-primary" style="padding: 0.4rem 0.85rem;" (click)="agregarUnidad()" [disabled]="!nuevaUnidadNombre.trim()">
                   <span class="material-icons-round" style="font-size:16px;">add</span> Agregar
                 </button>
@@ -110,7 +113,7 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
               <div class="section-title">Unidades Activas</div>
               <div class="table-container mb-4">
                 <table class="table">
-                  <thead><tr><th>Nombre</th><th>Abreviatura</th><th class="text-center" style="width:120px;">Acciones</th></tr></thead>
+                  <thead><tr><th>Nombre</th><th>Abrev.</th><th class="text-center">Dec.</th><th class="text-center" style="width:120px;">Acciones</th></tr></thead>
                   <tbody>
                     @for (uni of unidadesActivas(); track uni.id) {
                       <tr>
@@ -126,6 +129,15 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
                             <input [(ngModel)]="editUniAbrev" class="form-control" style="padding:4px 8px;width:80px;">
                           } @else {
                             {{ uni.abreviatura }}
+                          }
+                        </td>
+                        <td class="text-center">
+                          @if (editandoUniId === uni.id) {
+                            <input type="checkbox" [(ngModel)]="editUniDec">
+                          } @else {
+                            <span class="material-icons-round" [style.color]="uni.permiteDecimales ? '#4ade80' : '#f87171'" style="font-size:18px;">
+                              {{ uni.permiteDecimales ? 'check_circle' : 'cancel' }}
+                            </span>
                           }
                         </td>
                         <td class="text-center">
@@ -315,9 +327,11 @@ export class GestionCatalogosDialogComponent implements OnInit {
   // Unidades
   nuevaUnidadNombre = '';
   nuevaUnidadAbrev = '';
+  nuevaUnidadDec = false;
   editandoUniId: number | null = null;
   editUniNombre = '';
   editUniAbrev = '';
+  editUniDec = false;
 
   // Proveedores
   nuevoProvNombre = '';
@@ -392,8 +406,15 @@ export class GestionCatalogosDialogComponent implements OnInit {
 
   // ========== UNIDADES ==========
   agregarUnidad() {
-    this.catalogoService.crearUnidad({ nombre: this.nuevaUnidadNombre.trim(), abreviatura: this.nuevaUnidadAbrev.trim() || '?' }).subscribe({
-      next: () => { this.nuevaUnidadNombre = ''; this.nuevaUnidadAbrev = ''; this.cargar(); this.msg('Unidad creada'); },
+    this.catalogoService.crearUnidad({ 
+      nombre: this.nuevaUnidadNombre.trim(), 
+      abreviatura: this.nuevaUnidadAbrev.trim() || '?',
+      permiteDecimales: this.nuevaUnidadDec
+    }).subscribe({
+      next: () => { 
+        this.nuevaUnidadNombre = ''; this.nuevaUnidadAbrev = ''; this.nuevaUnidadDec = false;
+        this.cargar(); this.msg('Unidad creada'); 
+      },
       error: () => this.msg('Error al crear unidad')
     });
   }
@@ -402,10 +423,15 @@ export class GestionCatalogosDialogComponent implements OnInit {
     this.editandoUniId = uni.id;
     this.editUniNombre = uni.nombre;
     this.editUniAbrev = uni.abreviatura;
+    this.editUniDec = uni.permiteDecimales || false;
   }
 
   guardarUnidad(uni: UnidadMedida) {
-    this.catalogoService.actualizarUnidad(uni.id, { nombre: this.editUniNombre, abreviatura: this.editUniAbrev }).subscribe({
+    this.catalogoService.actualizarUnidad(uni.id, { 
+      nombre: this.editUniNombre, 
+      abreviatura: this.editUniAbrev,
+      permiteDecimales: this.editUniDec
+    }).subscribe({
       next: () => { this.editandoUniId = null; this.cargar(); this.msg('Unidad actualizada'); },
       error: () => this.msg('Error al actualizar')
     });

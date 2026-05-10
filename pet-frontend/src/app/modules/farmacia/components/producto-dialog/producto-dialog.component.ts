@@ -18,7 +18,7 @@ import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-
     <div class="dialog-container">
       <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">
-          {{ data.isEditing ? 'Detalles del Producto' : 'Nuevo Producto' }}
+          {{ data.isEditing ? 'Detalles del Producto' : (confirmando() ? 'Confirmar Datos' : 'Nuevo Producto') }}
         </h2>
         <button class="btn-icon" (click)="cerrar()">
           <span class="material-icons-round">close</span>
@@ -26,82 +26,129 @@ import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-
       </div>
 
       <div class="dialog-content" style="padding: 0 !important;">
-        <mat-tab-group animationDuration="200ms" class="custom-tabs">
-
+        <mat-tab-group animationDuration="200ms" class="custom-tabs" [selectedIndex]="tabIndex()">
+          
           <!-- TAB 1: DATOS BÁSICOS -->
           <mat-tab label="Datos del Producto">
             <div style="padding: 1.5rem;">
-              <form [formGroup]="form" (ngSubmit)="guardar()">
-                <div class="grid grid-cols-2 gap-4">
-                  <div class="form-group">
-                    <label>Nombre del Producto *</label>
-                    <input type="text" formControlName="nombre" class="form-control" placeholder="Ej. Bravecto 20-40kg">
-                  </div>
-                  <div class="form-group">
-                    <label>Marca</label>
-                    <input type="text" formControlName="marca" class="form-control" placeholder="Ej. MSD Animal Health">
+              @if (!confirmando()) {
+                <form [formGroup]="form" (ngSubmit)="irAConfirmar()">
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                      <label>Nombre del Producto *</label>
+                      <input type="text" formControlName="nombre" class="form-control" placeholder="Ej. Bravecto 20-40kg">
+                    </div>
+                    <div class="form-group">
+                      <label>Marca</label>
+                      <input type="text" formControlName="marca" class="form-control" placeholder="Ej. MSD Animal Health">
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                      <label>Descripción</label>
+                      <textarea formControlName="descripcion" class="form-control" rows="2" placeholder="Opcional..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Precio de Venta (S/) *</label>
+                      <input type="number" formControlName="precio" class="form-control" step="0.01">
+                    </div>
+                    <div class="form-group">
+                      <label>Categoría</label>
+                      <select formControlName="categoriaId" class="form-control">
+                        <option [ngValue]="null">Seleccione una categoría...</option>
+                        @for (cat of categorias(); track cat.id) {
+                          <option [ngValue]="cat.id">{{ cat.nombre }}</option>
+                        }
+                      </select>
+                    </div>
+
+                    <div style="grid-column: span 2; margin-top: 1rem; margin-bottom: 0.5rem;">
+                      <h3 style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Unidades de Medida y Conversión</h3>
+                      <hr style="border-color: var(--border-color); margin-top: 0.25rem;">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Se compra en (Ingreso)</label>
+                      <select formControlName="unidadCompraId" class="form-control">
+                        <option [ngValue]="null">Seleccione...</option>
+                        @for (uni of unidades(); track uni.id) {
+                          <option [ngValue]="uni.id">{{ uni.nombre }} ({{ uni.abreviatura }})</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Se vende por (Salida)</label>
+                      <select formControlName="unidadVentaId" class="form-control">
+                        <option [ngValue]="null">Seleccione...</option>
+                        @for (uni of unidades(); track uni.id) {
+                          <option [ngValue]="uni.id">{{ uni.nombre }} ({{ uni.abreviatura }})</option>
+                        }
+                      </select>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                      <label>Factor de Conversión</label>
+                      <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <span class="text-sm" style="color: var(--text-muted)">1 Unidad de Compra equivale a</span>
+                        <input type="number" formControlName="factorConversion" class="form-control" style="width: 100px;" step="0.01">
+                        <span class="text-sm" style="color: var(--text-muted)">Unidades de Venta</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div class="form-group" style="grid-column: span 2;">
-                    <label>Descripción</label>
-                    <textarea formControlName="descripcion" class="form-control" rows="2" placeholder="Opcional..."></textarea>
+                  <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+                    <button type="button" class="btn btn-secondary" (click)="cerrar()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" [disabled]="form.invalid || cargando()">
+                      Revisar Datos
+                    </button>
                   </div>
-
-                  <div class="form-group">
-                    <label>Precio de Venta (S/) *</label>
-                    <input type="number" formControlName="precio" class="form-control" step="0.01">
-                  </div>
-                  <div class="form-group">
-                    <label>Categoría</label>
-                    <select formControlName="categoriaId" class="form-control">
-                      <option [ngValue]="null">Seleccione una categoría...</option>
-                      @for (cat of categorias(); track cat.id) {
-                        <option [ngValue]="cat.id">{{ cat.nombre }}</option>
-                      }
-                    </select>
-                  </div>
-
-                  <div style="grid-column: span 2; margin-top: 1rem; margin-bottom: 0.5rem;">
-                    <h3 style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Unidades de Medida y Conversión</h3>
-                    <hr style="border-color: var(--border-color); margin-top: 0.25rem;">
-                  </div>
-
-                  <div class="form-group">
-                    <label>Se compra en (Ingreso)</label>
-                    <select formControlName="unidadCompraId" class="form-control">
-                      <option [ngValue]="null">Seleccione...</option>
-                      @for (uni of unidades(); track uni.id) {
-                        <option [ngValue]="uni.id">{{ uni.nombre }} ({{ uni.abreviatura }})</option>
-                      }
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>Se vende por (Salida)</label>
-                    <select formControlName="unidadVentaId" class="form-control">
-                      <option [ngValue]="null">Seleccione...</option>
-                      @for (uni of unidades(); track uni.id) {
-                        <option [ngValue]="uni.id">{{ uni.nombre }} ({{ uni.abreviatura }})</option>
-                      }
-                    </select>
-                  </div>
-
-                  <div class="form-group" style="grid-column: span 2;">
-                    <label>Factor de Conversión</label>
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                      <span class="text-sm" style="color: var(--text-muted)">1 Unidad de Compra equivale a</span>
-                      <input type="number" formControlName="factorConversion" class="form-control" style="width: 100px;" step="0.01">
-                      <span class="text-sm" style="color: var(--text-muted)">Unidades de Venta</span>
+                </form>
+              } @else {
+                <!-- VISTA DE CONFIRMACIÓN -->
+                <div style="background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color); padding: 1.25rem; margin-bottom: 1.5rem;">
+                  <p class="text-xs font-bold" style="color: var(--text-secondary); text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Resumen del Producto (Normalizado)</p>
+                  
+                  <div class="grid grid-cols-2 gap-x-6 gap-y-4">
+                    <div class="summary-item">
+                      <span class="text-xs" style="color: var(--text-muted)">Nombre:</span>
+                      <p class="font-bold" style="color: var(--color-primary-400); text-transform: lowercase;">{{ normalizar(form.get('nombre')?.value) }}</p>
+                    </div>
+                    <div class="summary-item">
+                      <span class="text-xs" style="color: var(--text-muted)">Marca:</span>
+                      <p class="font-medium" style="text-transform: lowercase;">{{ normalizar(form.get('marca')?.value) || '—' }}</p>
+                    </div>
+                    <div class="summary-item">
+                      <span class="text-xs" style="color: var(--text-muted)">Precio:</span>
+                      <p class="font-bold">S/ {{ form.get('precio')?.value | number:'1.2-2' }}</p>
+                    </div>
+                    <div class="summary-item">
+                      <span class="text-xs" style="color: var(--text-muted)">Categoría:</span>
+                      <p class="font-medium">{{ obtenerNombreCat() }}</p>
+                    </div>
+                    <div class="summary-item">
+                      <span class="text-xs" style="color: var(--text-muted)">U. Compra:</span>
+                      <p class="font-medium">{{ obtenerNombreUni('unidadCompraId') }}</p>
+                    </div>
+                    <div class="summary-item">
+                      <span class="text-xs" style="color: var(--text-muted)">U. Venta:</span>
+                      <p class="font-medium">{{ obtenerNombreUni('unidadVentaId') }}</p>
+                    </div>
+                    <div class="summary-item" style="grid-column: span 2;">
+                      <span class="text-xs" style="color: var(--text-muted)">Conversión:</span>
+                      <p class="text-sm">1 {{ obtenerNombreUni('unidadCompraId') }} = <strong>{{ form.get('factorConversion')?.value }}</strong> {{ obtenerNombreUni('unidadVentaId') }}</p>
                     </div>
                   </div>
                 </div>
 
-                <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
-                  <button type="button" class="btn btn-secondary" (click)="cerrar()">Cancelar</button>
-                  <button type="submit" class="btn btn-primary" [disabled]="form.invalid || cargando()">
-                    {{ cargando() ? 'Guardando...' : 'Guardar Producto' }}
+                <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                  <button type="button" class="btn btn-secondary" (click)="confirmando.set(false)" [disabled]="cargando()">
+                    <span class="material-icons-round" style="font-size: 18px;">edit</span> Volver a Editar
+                  </button>
+                  <button type="button" class="btn btn-primary" (click)="guardar()" [disabled]="cargando()">
+                    {{ cargando() ? 'Guardando...' : 'Confirmar y Guardar' }}
                   </button>
                 </div>
-              </form>
+              }
             </div>
           </mat-tab>
 
@@ -109,7 +156,6 @@ import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-
           @if (data.isEditing) {
             <mat-tab label="Control de Stock y Lotes">
               <div style="padding: 1.5rem;">
-
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                   <h3 style="font-weight: 600; color: var(--text-primary); margin: 0;">Lotes Activos</h3>
                   <div style="display: flex; gap: 8px;">
@@ -140,7 +186,7 @@ import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-
                           <td class="font-medium">{{ lote.numeroLote }}</td>
                           <td>
                             <span class="badge" [class.badge-error]="estaPorVencer(lote.fechaVencimiento)">
-                              {{ lote.fechaVencimiento }}
+                              {{ lote.fechaVencimiento || 'Sin fecha' }}
                             </span>
                           </td>
                           <td>{{ lote.proveedorNombre || 'N/A' }}</td>
@@ -212,11 +258,14 @@ import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-
       background-color: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
     }
+    .summary-item p { margin: 0; }
   `]
 })
 export class ProductoDialogComponent implements OnInit {
   form: FormGroup;
   cargando = signal(false);
+  confirmando = signal(false);
+  tabIndex = signal(0);
 
   categorias = signal<CategoriaProducto[]>([]);
   unidades = signal<UnidadMedida[]>([]);
@@ -262,6 +311,55 @@ export class ProductoDialogComponent implements OnInit {
     this.catalogoService.listarProveedores().subscribe(res => this.proveedores.set(res));
   }
 
+  normalizar(texto: string): string {
+    if (!texto) return '';
+    return texto.toLowerCase()
+      .replace(/[^a-z0-9áéíóúñ\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  obtenerNombreCat(): string {
+    const id = this.form.get('categoriaId')?.value;
+    return this.categorias().find(c => c.id === id)?.nombre || 'Sin categoría';
+  }
+
+  obtenerNombreUni(control: string): string {
+    const id = this.form.get(control)?.value;
+    return this.unidades().find(u => u.id === id)?.nombre || 'Sin unidad';
+  }
+
+  irAConfirmar() {
+    if (this.form.invalid) return;
+    this.confirmando.set(true);
+  }
+
+  guardar() {
+    this.cargando.set(true);
+
+    // Los datos ya se normalizan en el backend, pero los mandamos limpios
+    const values = {
+      ...this.form.value,
+      nombre: this.normalizar(this.form.value.nombre),
+      marca: this.normalizar(this.form.value.marca)
+    };
+
+    const obs$ = this.data.isEditing
+      ? this.productoService.actualizar(this.data.producto.id, values)
+      : this.productoService.crear(values);
+
+    obs$.subscribe({
+      next: () => {
+        this.snackBar.open('Producto guardado exitosamente', 'Cerrar', { duration: 3000 });
+        this.dialogRef.close(true);
+      },
+      error: (err) => {
+        this.snackBar.open(err.error?.message || 'Error al guardar el producto', 'Cerrar', { duration: 3000 });
+        this.cargando.set(false);
+      }
+    });
+  }
+
   cargarLotes() {
     const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
     this.inventarioService.obtenerLotes(this.data.producto.id, sedeId).subscribe({
@@ -270,31 +368,18 @@ export class ProductoDialogComponent implements OnInit {
     });
   }
 
-  guardar() {
-    if (this.form.invalid) return;
-    this.cargando.set(true);
-
-    const obs$ = this.data.isEditing
-      ? this.productoService.actualizar(this.data.producto.id, this.form.value)
-      : this.productoService.crear(this.form.value);
-
-    obs$.subscribe({
-      next: () => {
-        this.snackBar.open('Producto guardado exitosamente', 'Cerrar', { duration: 3000 });
-        this.dialogRef.close(true);
-      },
-      error: () => {
-        this.snackBar.open('Error al guardar el producto', 'Cerrar', { duration: 3000 });
-        this.cargando.set(false);
-      }
-    });
-  }
-
   abrirIngresoStock() {
+    // Buscar la unidad para pasar la info de decimales
+    const uniId = this.data.producto.unidadCompraId;
+    const unidad = this.unidades().find(u => u.id === uniId);
+
     const dialogRef = this.dialog.open(IngresoStockDialogComponent, {
       width: '500px',
       data: {
-        producto: this.data.producto,
+        producto: {
+          ...this.data.producto,
+          unidadCompraPermiteDecimales: unidad ? unidad.permiteDecimales : false
+        },
         proveedores: this.proveedores()
       }
     });
@@ -305,10 +390,16 @@ export class ProductoDialogComponent implements OnInit {
   }
 
   abrirSalidaStock() {
+    const uniId = this.data.producto.unidadVentaId;
+    const unidad = this.unidades().find(u => u.id === uniId);
+
     const dialogRef = this.dialog.open(SalidaStockDialogComponent, {
       width: '500px',
       data: {
-        producto: this.data.producto
+        producto: {
+          ...this.data.producto,
+          unidadVentaPermiteDecimales: unidad ? unidad.permiteDecimales : false
+        }
       }
     });
 
@@ -318,6 +409,7 @@ export class ProductoDialogComponent implements OnInit {
   }
 
   estaPorVencer(fecha: string): boolean {
+    if (!fecha) return false;
     const hoy = new Date();
     const fVencimiento = new Date(fecha);
     const diffTime = fVencimiento.getTime() - hoy.getTime();

@@ -106,16 +106,16 @@ public class PetApplication {
 
 			// 5. Inicializar Unidades de Medida
 			if (unidadMedidaRepositorio.count() == 0) {
-				unidadMedidaRepositorio.save(new UnidadMedida(null, "Unidad", "Un", true));
-				unidadMedidaRepositorio.save(new UnidadMedida(null, "Caja", "Cj", true));
-				unidadMedidaRepositorio.save(new UnidadMedida(null, "Tableta", "Tab", true));
-				unidadMedidaRepositorio.save(new UnidadMedida(null, "Blíster", "Blíst", true));
-				unidadMedidaRepositorio.save(new UnidadMedida(null, "Mililitro", "ml", true));
-				unidadMedidaRepositorio.save(new UnidadMedida(null, "Frasco", "Fr", true));
-				unidadMedidaRepositorio.save(new UnidadMedida(null, "Saco", "Sc", true));
-				unidadMedidaRepositorio.save(new UnidadMedida(null, "Kilogramo", "kg", true));
-				unidadMedidaRepositorio.save(new UnidadMedida(null, "Metro", "m", true));
-				unidadMedidaRepositorio.save(new UnidadMedida(null, "Kit / Prueba", "Kit", true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Unidad", "Un", false, true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Caja", "Cj", false, true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Tableta", "Tab", false, true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Blíster", "Blíst", false, true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Mililitro", "ml", true, true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Frasco", "Fr", false, true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Saco", "Sc", false, true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Kilogramo", "kg", true, true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Metro", "m", true, true));
+				unidadMedidaRepositorio.save(new UnidadMedida(null, "Kit / Prueba", "Kit", false, true));
 				System.out.println("✅ Unidades de medida inicializadas");
 			}
 

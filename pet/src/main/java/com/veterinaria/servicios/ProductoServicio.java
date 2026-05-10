@@ -42,10 +42,10 @@ public class ProductoServicio {
     // =========================
     public ProductoResponseDTO guardar(ProductoRequestDTO dto) {
         Producto producto = new Producto();
-        producto.setNombre(dto.getNombre());
+        producto.setNombre(normalizarTexto(dto.getNombre()));
         producto.setDescripcion(dto.getDescripcion());
         producto.setPrecio(dto.getPrecio());
-        producto.setMarca(dto.getMarca());
+        producto.setMarca(normalizarTexto(dto.getMarca()));
         if (dto.getFactorConversion() != null) {
             producto.setFactorConversion(dto.getFactorConversion());
         }
@@ -95,10 +95,10 @@ public class ProductoServicio {
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Producto no encontrado con ID: " + id));
 
-        productodb.setNombre(dto.getNombre());
+        productodb.setNombre(normalizarTexto(dto.getNombre()));
         productodb.setDescripcion(dto.getDescripcion());
         productodb.setPrecio(dto.getPrecio());
-        productodb.setMarca(dto.getMarca());
+        productodb.setMarca(normalizarTexto(dto.getMarca()));
         if (dto.getFactorConversion() != null) {
             productodb.setFactorConversion(dto.getFactorConversion());
         }
@@ -148,6 +148,17 @@ public class ProductoServicio {
                 .distinct()
                 .map(this::mapearAResponseDTO)
                 .collect(Collectors.toList());
+    }
+
+    private String normalizarTexto(String texto) {
+        if (texto == null) return null;
+        // 1. Convertir a minúsculas
+        String resultado = texto.toLowerCase();
+        // 2. Quitar caracteres extraños (quedarse solo con letras, números y espacios)
+        resultado = resultado.replaceAll("[^a-z0-9áéíóúñ\\s]", "");
+        // 3. Eliminar espacios repetidos y trim
+        resultado = resultado.replaceAll("\\s+", " ").trim();
+        return resultado;
     }
 
     // =========================

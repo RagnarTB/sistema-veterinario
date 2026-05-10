@@ -23,5 +23,6 @@ public class UnidadMedida {
     private String nombre; // Ej. Caja, Tableta, Mililitro
     private String abreviatura; // Ej. Cj, Tab, ml
     
+    private Boolean permiteDecimales = false;
     private Boolean activo = true;
 }

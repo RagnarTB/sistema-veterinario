@@ -79,6 +79,14 @@ public class InventarioServicio {
     public void registrarIngreso(IngresoStockDTO dto, String emailResponsable) {
         Producto producto = productoRepositorio.findById(dto.getProductoId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
+        
+        // Validación de decimales según unidad de compra
+        if (producto.getUnidadCompra() != null && !Boolean.TRUE.equals(producto.getUnidadCompra().getPermiteDecimales())) {
+            if (dto.getCantidadComprada().remainder(java.math.BigDecimal.ONE).compareTo(java.math.BigDecimal.ZERO) != 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La unidad " + producto.getUnidadCompra().getNombre() + " no permite valores decimales.");
+            }
+        }
+
         Sede sede = sedeRepositorio.findById(dto.getSedeId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
         
@@ -93,15 +101,22 @@ public class InventarioServicio {
         BigDecimal factor = producto.getFactorConversion() != null ? producto.getFactorConversion() : BigDecimal.ONE;
         BigDecimal cantidadIngresoVenta = dto.getCantidadComprada().multiply(factor);
 
-        // 2. Crear el Lote
-        LoteInventario lote = new LoteInventario();
-        lote.setNumeroLote(dto.getNumeroLote());
-        lote.setFechaVencimiento(dto.getFechaVencimiento());
-        lote.setStockRestante(cantidadIngresoVenta);
-        lote.setProducto(producto);
-        lote.setSede(sede);
-        lote.setProveedor(proveedor);
-        lote.setActivo(true);
+        // 2. Consolidar Lote o crear uno nuevo
+        LoteInventario lote = loteRepositorio.findByProductoIdAndSedeIdAndNumeroLoteAndFechaVencimientoAndProveedorIdAndActivoTrue(
+            producto.getId(), sede.getId(), dto.getNumeroLote(), dto.getFechaVencimiento(), dto.getProveedorId()
+        ).orElse(new LoteInventario());
+
+        if (lote.getId() == null) {
+            lote.setNumeroLote(dto.getNumeroLote());
+            lote.setFechaVencimiento(dto.getFechaVencimiento());
+            lote.setStockRestante(cantidadIngresoVenta);
+            lote.setProducto(producto);
+            lote.setSede(sede);
+            lote.setProveedor(proveedor);
+            lote.setActivo(true);
+        } else {
+            lote.setStockRestante(lote.getStockRestante().add(cantidadIngresoVenta));
+        }
         loteRepositorio.save(lote);
 
         // 3. Crear el Movimiento (Kardex)
@@ -110,12 +125,12 @@ public class InventarioServicio {
         movimiento.setSede(sede);
         movimiento.setTipoMovimiento(TipoMovimiento.ENTRADA_COMPRA);
         movimiento.setCantidad(cantidadIngresoVenta);
-        movimiento.setMotivo(dto.getMotivo());
+        movimiento.setMotivo(dto.getMotivo() + (lote.getId() != null ? " (Consolidación)" : ""));
         movimiento.setFecha(LocalDateTime.now());
         movimiento.setResponsable(responsable);
         movimientoRepositorio.save(movimiento);
 
-        // 4. Actualizar el Inventario General (Stock global de la sede)
+        // 4. Actualizar el Inventario General
         InventarioSede inventario = inventarioSedeRepositorio.findByProductoIdAndSedeId(producto.getId(), sede.getId())
                 .orElseGet(() -> {
                     InventarioSede nuevo = new InventarioSede();
@@ -169,6 +184,13 @@ public class InventarioServicio {
         Empleado responsable = empleadoRepositorio.findByUsuarioEmail(emailResponsable).orElse(null);
 
         TipoMovimiento tipo = TipoMovimiento.valueOf(dto.getTipoMovimiento());
+
+        // Validación de decimales según unidad de venta
+        if (producto.getUnidadVenta() != null && !Boolean.TRUE.equals(producto.getUnidadVenta().getPermiteDecimales())) {
+            if (dto.getCantidad().remainder(java.math.BigDecimal.ONE).compareTo(java.math.BigDecimal.ZERO) != 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La unidad " + producto.getUnidadVenta().getNombre() + " no permite valores decimales.");
+            }
+        }
 
         boolean esSalida = tipo == TipoMovimiento.SALIDA_CONSUMO_INTERNO
                 || tipo == TipoMovimiento.AJUSTE_NEGATIVO
