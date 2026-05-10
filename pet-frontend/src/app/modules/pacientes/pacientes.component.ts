@@ -13,6 +13,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
 
 import { PacienteService } from '../../core/services/paciente.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -37,6 +38,7 @@ import { EspeciesDialogComponent } from './especies-dialog/especies-dialog.compo
     MatTooltipModule,
     MatDialogModule,
     MatSnackBarModule,
+    MatTabsModule,
     DatePipe
   ],
   providers: [DatePipe],
@@ -74,6 +76,13 @@ import { EspeciesDialogComponent } from './especies-dialog/especies-dialog.compo
         </mat-form-field>
       </div>
 
+      <!-- Filtros por Pestañas -->
+      <mat-tab-group class="custom-tabs" (selectedIndexChange)="onTabChange($event)">
+        <mat-tab label="Activos"></mat-tab>
+        <mat-tab label="Inactivos"></mat-tab>
+        <mat-tab label="Todos"></mat-tab>
+      </mat-tab-group>
+
       <!-- Tabla principal -->
       <div class="table-card premium-card">
         @if (loading()) {
@@ -95,7 +104,7 @@ import { EspeciesDialogComponent } from './especies-dialog/especies-dialog.compo
                   </div>
                   <div class="user-info">
                     <span class="user-name">{{ element.nombre }}</span>
-                    <span class="user-doc">{{ element.especie }} {{ element.raza ? ' - '+element.raza : '' }}</span>
+                    <span class="user-doc">{{ element.especieNombre }} {{ element.raza ? ' - '+element.raza : '' }}</span>
                   </div>
                 </div>
               </td>
@@ -222,6 +231,7 @@ export class PacientesComponent implements OnInit {
   pageSize = signal(10);
   pageIndex = signal(0);
   loading = signal(false);
+  estadoActual = signal<boolean | null>(true);
 
   searchControl = new FormControl('');
   isAdmin = this.authService.isAdmin();
@@ -241,7 +251,7 @@ export class PacientesComponent implements OnInit {
     this.loading.set(true);
     const search = this.searchControl.value || '';
     
-    this.pacienteService.listar(this.pageIndex(), this.pageSize(), search).subscribe({
+    this.pacienteService.listar(this.pageIndex(), this.pageSize(), search, this.estadoActual()).subscribe({
       next: (pageData) => {
         this.dataSource.set(pageData.content);
         this.totalElements.set(pageData.totalElements);
@@ -252,6 +262,18 @@ export class PacientesComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  onTabChange(index: number) {
+    if (index === 0) {
+      this.estadoActual.set(true);
+    } else if (index === 1) {
+      this.estadoActual.set(false);
+    } else {
+      this.estadoActual.set(null);
+    }
+    this.pageIndex.set(0);
+    this.cargarPacientes();
   }
 
   onPageChange(event: PageEvent) {

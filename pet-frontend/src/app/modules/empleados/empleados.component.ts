@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 import { EmpleadoService } from '../../core/services/empleado.service';
@@ -27,7 +28,8 @@ import { ModalConfirmacionComponent } from '../../shared/components/modal-confir
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
-    MatDialogModule
+    MatDialogModule,
+    MatTabsModule
   ],
   template: `
     <div class="page-container fade-in-up">
@@ -58,6 +60,13 @@ import { ModalConfirmacionComponent } from '../../shared/components/modal-confir
             />
           </div>
         </div>
+
+        <!-- Filtros por Pestañas -->
+        <mat-tab-group class="custom-tabs" (selectedIndexChange)="onTabChange($event)">
+          <mat-tab label="Activos"></mat-tab>
+          <mat-tab label="Inactivos"></mat-tab>
+          <mat-tab label="Todos"></mat-tab>
+        </mat-tab-group>
 
         <!-- Tabla -->
         <div class="table-container relative">
@@ -153,6 +162,7 @@ export class EmpleadosComponent implements OnInit {
   pageSize = signal(10);
   pageIndex = signal(0);
   loading = signal(false);
+  estadoActual = signal<boolean | null>(true);
 
   searchControl = new FormControl('');
 
@@ -177,7 +187,7 @@ export class EmpleadosComponent implements OnInit {
   cargarEmpleados() {
     this.loading.set(true);
     const searchTerm = this.searchControl.value || '';
-    this.empleadoService.listar(this.pageIndex(), this.pageSize(), searchTerm).subscribe({
+    this.empleadoService.listar(this.pageIndex(), this.pageSize(), searchTerm, this.estadoActual()).subscribe({
       next: (page: any) => {
         this.dataSource.set(page.content);
         this.totalElements.set(page.totalElements);
@@ -188,6 +198,18 @@ export class EmpleadosComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  onTabChange(index: number) {
+    if (index === 0) {
+      this.estadoActual.set(true);
+    } else if (index === 1) {
+      this.estadoActual.set(false);
+    } else {
+      this.estadoActual.set(null);
+    }
+    this.pageIndex.set(0);
+    this.cargarEmpleados();
   }
 
   onPageChange(event: PageEvent) {

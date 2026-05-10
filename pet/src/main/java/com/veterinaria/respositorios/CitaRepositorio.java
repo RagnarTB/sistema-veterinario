@@ -77,14 +77,16 @@ public interface CitaRepositorio extends JpaRepository<Cita, Long> {
     @Query("SELECT DISTINCT c FROM Cita c " +
             "LEFT JOIN c.pacientes p " +
             "LEFT JOIN p.cliente cl " +
+            "LEFT JOIN cl.usuario ucl " +
             "JOIN c.veterinario v " +
+            "JOIN v.usuario uv " +
             "WHERE c.sede.id = :sedeId AND (" +
             "UPPER(p.nombre) LIKE UPPER(CONCAT('%', :buscar, '%')) OR " +
-            "UPPER(cl.nombre) LIKE UPPER(CONCAT('%', :buscar, '%')) OR " +
-            "UPPER(cl.apellido) LIKE UPPER(CONCAT('%', :buscar, '%')) OR " +
-            "cl.dni LIKE CONCAT('%', :buscar, '%') OR " +
-            "UPPER(v.nombre) LIKE UPPER(CONCAT('%', :buscar, '%')) OR " +
-            "UPPER(v.apellido) LIKE UPPER(CONCAT('%', :buscar, '%'))" +
+            "UPPER(ucl.nombre) LIKE UPPER(CONCAT('%', :buscar, '%')) OR " +
+            "UPPER(ucl.apellido) LIKE UPPER(CONCAT('%', :buscar, '%')) OR " +
+            "ucl.dni LIKE CONCAT('%', :buscar, '%') OR " +
+            "UPPER(uv.nombre) LIKE UPPER(CONCAT('%', :buscar, '%')) OR " +
+            "UPPER(uv.apellido) LIKE UPPER(CONCAT('%', :buscar, '%'))" +
             ")")
     Page<Cita> buscarEnSede(@Param("sedeId") Long sedeId, @Param("buscar") String buscar, Pageable pageable);
 

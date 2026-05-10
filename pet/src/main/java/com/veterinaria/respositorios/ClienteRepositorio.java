@@ -7,12 +7,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.veterinaria.modelos.Cliente;
 
 public interface ClienteRepositorio extends JpaRepository<Cliente, Long> {
-    boolean existsByDni(String dni);
-    java.util.Optional<Cliente> findByDni(String dni);
+
 
     // Conteo de clientes activos para el dashboard
     long countByActivoTrue();
 
-    Page<Cliente> findByNombreContainingIgnoreCaseOrApellidoContainingIgnoreCaseOrDniContaining(
-            String nombre, String apellido, String dni, Pageable pageable);
+    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT c FROM Cliente c JOIN c.usuario u JOIN u.roles r WHERE r.nombre = 'ROLE_CLIENTE' AND (:estado IS NULL OR c.activo = :estado) AND (LOWER(u.nombre) LIKE LOWER(CONCAT('%', :buscar, '%')) OR LOWER(u.apellido) LIKE LOWER(CONCAT('%', :buscar, '%')) OR u.dni LIKE CONCAT('%', :buscar, '%'))")
+    Page<Cliente> buscarClientesConRol(@org.springframework.data.repository.query.Param("buscar") String buscar, @org.springframework.data.repository.query.Param("estado") Boolean estado, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT c FROM Cliente c JOIN c.usuario u JOIN u.roles r WHERE r.nombre = 'ROLE_CLIENTE' AND (:estado IS NULL OR c.activo = :estado)")
+    Page<Cliente> findAllConRol(@org.springframework.data.repository.query.Param("estado") Boolean estado, Pageable pageable);
 }

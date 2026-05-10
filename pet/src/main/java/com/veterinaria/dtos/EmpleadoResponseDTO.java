@@ -20,6 +20,7 @@ public class EmpleadoResponseDTO {
     private String dni;
     private String telefono;
     private String especialidad;
+    private String numeroColegiatura;
     private BigDecimal sueldoBase;
     private Boolean activo;
     private Set<Long> sedeIds;

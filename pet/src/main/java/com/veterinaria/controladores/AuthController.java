@@ -19,6 +19,7 @@ import com.veterinaria.dtos.RegistroClienteDTO;
 import com.veterinaria.dtos.GoogleLoginRequestDTO;
 import com.veterinaria.dtos.SolicitarRegistroCorreoDTO;
 import com.veterinaria.dtos.CompletarRegistroDTO;
+import com.veterinaria.dtos.SeleccionarRolRequestDTO;
 import com.veterinaria.servicios.AuthServicio;
 
 import jakarta.validation.Valid;
@@ -91,6 +92,14 @@ public class AuthController {
     @PostMapping("/confirmar-token")
     public ResponseEntity<MensajeResponseDTO> confirmarToken(@Valid @RequestBody com.veterinaria.dtos.ConfirmarTokenRequestDTO dto) {
         MensajeResponseDTO respuesta = authServicio.confirmarToken(dto.getToken(), dto.getPassword());
+        return ResponseEntity.ok(respuesta);
+    }
+
+    @PostMapping("/seleccionar-rol")
+    public ResponseEntity<AuthResponseDTO> seleccionarRol(
+            @Valid @RequestBody SeleccionarRolRequestDTO dto) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        AuthResponseDTO respuesta = authServicio.seleccionarRol(email, dto.getRol());
         return ResponseEntity.ok(respuesta);
     }
 }

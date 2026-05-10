@@ -41,7 +41,7 @@ export interface SedeDialogData {
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>Nombre de la Sede</mat-label>
           <mat-icon matPrefix>store</mat-icon>
-          <input matInput formControlName="nombre" placeholder="Ej. Sede Central" />
+          <input matInput formControlName="nombre" placeholder="Ej. Sede Central" (input)="form.get('nombre')?.setValue($event.target.value.toUpperCase(), {emitEvent: false})" />
           <mat-error *ngIf="form.get('nombre')?.hasError('required')">El nombre es obligatorio</mat-error>
         </mat-form-field>
 
@@ -105,7 +105,6 @@ export class SedeDialogComponent implements OnInit {
       event.preventDefault();
     }
   }
-
 
   guardar() {
     if (this.form.invalid) return;

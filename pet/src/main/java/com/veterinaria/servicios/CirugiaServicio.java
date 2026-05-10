@@ -124,7 +124,7 @@ public class CirugiaServicio {
         dto.setPacienteId(cirugia.getPaciente().getId());
         dto.setPacienteNombre(cirugia.getPaciente().getNombre());
         dto.setCirujanoId(cirugia.getCirujano().getId());
-        dto.setCirujanoNombre(cirugia.getCirujano().getNombre() + " " + cirugia.getCirujano().getApellido());
+        dto.setCirujanoNombre(cirugia.getCirujano().getUsuario().getNombre() + " " + cirugia.getCirujano().getUsuario().getApellido());
         
         if (cirugia.getHospitalizacion() != null) {
             dto.setHospitalizacionId(cirugia.getHospitalizacion().getId());

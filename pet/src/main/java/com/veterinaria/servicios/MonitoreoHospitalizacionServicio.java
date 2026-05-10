@@ -69,7 +69,7 @@ public class MonitoreoHospitalizacionServicio {
         dto.setObservaciones(monitoreo.getObservaciones());
         dto.setHospitalizacionId(monitoreo.getHospitalizacion().getId());
         dto.setEmpleadoId(monitoreo.getEmpleado().getId());
-        dto.setEmpleadoNombre(monitoreo.getEmpleado().getNombre() + " " + monitoreo.getEmpleado().getApellido());
+        dto.setEmpleadoNombre(monitoreo.getEmpleado().getUsuario().getNombre() + " " + monitoreo.getEmpleado().getUsuario().getApellido());
         return dto;
     }
 }

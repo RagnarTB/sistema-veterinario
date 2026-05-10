@@ -9,6 +9,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,10 +38,12 @@ public class EmpleadoServicio {
     private final SedeRepositorio sedeRepositorio;
     private final VerificationTokenRepositorio tokenRepositorio;
     private final EmailServicio emailServicio;
+    private final com.veterinaria.respositorios.ClienteRepositorio clienteRepositorio;
 
     public EmpleadoServicio(EmpleadoRepositorio empleadoRepositorio, UsuarioRepositorio usuarioRepositorio,
             RolRespositorio rolRepositorio, PasswordEncoder passwordEncoder, SedeRepositorio sedeRepositorio,
-            VerificationTokenRepositorio tokenRepositorio, EmailServicio emailServicio) {
+            VerificationTokenRepositorio tokenRepositorio, EmailServicio emailServicio,
+            com.veterinaria.respositorios.ClienteRepositorio clienteRepositorio) {
         this.empleadoRepositorio = empleadoRepositorio;
         this.usuarioRepositorio = usuarioRepositorio;
         this.rolRepositorio = rolRepositorio;
@@ -48,22 +51,51 @@ public class EmpleadoServicio {
         this.sedeRepositorio = sedeRepositorio;
         this.tokenRepositorio = tokenRepositorio;
         this.emailServicio = emailServicio;
+        this.clienteRepositorio = clienteRepositorio;
     }
 
     @Transactional
     public EmpleadoResponseDTO guardar(EmpleadoRequestDTO dto) {
-        if (empleadoRepositorio.existsByDni(dto.getDni())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe un empleado con este DNI");
-        }
 
-        Usuario usuarioGuardado;
-        Optional<Usuario> usuarioOpt = usuarioRepositorio.findByEmail(dto.getEmail());
-        if (usuarioOpt.isPresent()) {
-            Usuario u = usuarioOpt.get();
-            if (u.getEmpleado() != null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe un empleado con este email");
+        Usuario usuarioGuardado = null;
+        Optional<Usuario> usuarioPorDni = usuarioRepositorio.findByDni(dto.getDni());
+        Empleado empleado = new Empleado();
+
+        if (usuarioPorDni.isPresent()) {
+            Usuario u = usuarioPorDni.get();
+            boolean tieneRolesDeEmpleado = u.getRoles().stream()
+                    .anyMatch(r -> r.getNombre().equals("ROLE_ADMIN") || r.getNombre().equals("ROLE_RECEPCIONISTA") || r.getNombre().equals("ROLE_VETERINARIO"));
+
+            if (u.getEmpleado() != null && tieneRolesDeEmpleado) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe un empleado con este DNI");
             }
-            // Si el usuario existe (es cliente), solo se agregan roles
+            // Reutilizar el empleado si existe pero estaba oculto (sin roles)
+            if (u.getEmpleado() != null) {
+                empleado = u.getEmpleado();
+            }
+
+            // Actualizar datos del usuario existente (ej. si era solo cliente)
+            u.setNombre(dto.getNombre());
+            u.setApellido(dto.getApellido());
+            u.setTelefono(dto.getTelefono());
+            if (dto.getEmail() != null && !dto.getEmail().isEmpty()) {
+                // Verificar si el nuevo email ya lo usa otro
+                Optional<Usuario> uEmail = usuarioRepositorio.findByEmail(dto.getEmail());
+                if (uEmail.isPresent() && !uEmail.get().getId().equals(u.getId())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro usuario con este email.");
+                }
+                u.setEmail(dto.getEmail());
+            }
+
+            // Validar que solo admin@veterinaria.com puede asignar ROLE_ADMIN a un nuevo empleado si ya era cliente
+            String currentUsername = SecurityContextHolder.getContext().getAuthentication() != null ? 
+                                     SecurityContextHolder.getContext().getAuthentication().getName() : "";
+            
+            boolean asignandoAdmin = dto.getRoles().contains("ROLE_ADMIN");
+            if (asignandoAdmin && !currentUsername.equals("admin@veterinaria.com")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo el administrador principal puede asignar el rol ADMIN.");
+            }
+
             for (String nombreRol : dto.getRoles()) {
                 Rol rol = rolRepositorio.findByNombre(nombreRol)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rol no encontrado: " + nombreRol));
@@ -71,12 +103,29 @@ public class EmpleadoServicio {
             }
             usuarioGuardado = usuarioRepositorio.save(u);
         } else {
+            // Verificar si el email ya existe en otro lado
+            if (usuarioRepositorio.findByEmail(dto.getEmail()).isPresent()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email proporcionado ya está en uso.");
+            }
+
+            // Validar que solo admin@veterinaria.com puede asignar ROLE_ADMIN
+            String currentUsername = SecurityContextHolder.getContext().getAuthentication() != null ? 
+                                     SecurityContextHolder.getContext().getAuthentication().getName() : "";
+            
+            boolean asignandoAdmin = dto.getRoles().contains("ROLE_ADMIN");
+            if (asignandoAdmin && !currentUsername.equals("admin@veterinaria.com")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo el administrador principal puede asignar el rol ADMIN.");
+            }
+
             // Usuario nuevo
             Usuario usuario = new Usuario();
             usuario.setEmail(dto.getEmail());
-            // Contraseña inútil hasta que lo active
             usuario.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
             usuario.setActivo(false); 
+            usuario.setNombre(dto.getNombre());
+            usuario.setApellido(dto.getApellido());
+            usuario.setDni(dto.getDni());
+            usuario.setTelefono(dto.getTelefono());
             
             Set<Rol> rolesAsignados = new HashSet<>();
             for (String nombreRol : dto.getRoles()) {
@@ -93,13 +142,8 @@ public class EmpleadoServicio {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Sedes no encontradas");
         }
         Set<Sede> sedes = new HashSet<>(sedesLista);
-
-        Empleado empleado = new Empleado();
-        empleado.setNombre(dto.getNombre());
-        empleado.setApellido(dto.getApellido());
-        empleado.setDni(dto.getDni());
-        empleado.setTelefono(dto.getTelefono());
         empleado.setEspecialidad(dto.getEspecialidad());
+        empleado.setNumeroColegiatura(dto.getNumeroColegiatura());
         empleado.setSueldoBase(dto.getSueldoBase());
         empleado.setSedes(sedes);
         empleado.setUsuario(usuarioGuardado);
@@ -119,16 +163,25 @@ public class EmpleadoServicio {
             emailServicio.enviarCorreoConfirmacion(usuarioGuardado.getEmail(), tokenStr);
         }
 
+        // Si se le asignó ROLE_CLIENTE y no tiene registro de Cliente, crearlo
+        boolean tieneRolCliente = usuarioGuardado.getRoles().stream().anyMatch(r -> r.getNombre().equals("ROLE_CLIENTE"));
+        if (tieneRolCliente && usuarioGuardado.getCliente() == null) {
+            com.veterinaria.modelos.Cliente nuevoCliente = new com.veterinaria.modelos.Cliente();
+            nuevoCliente.setUsuario(usuarioGuardado);
+            nuevoCliente.setActivo(usuarioGuardado.getActivo());
+            nuevoCliente.setEsInvitado(false);
+            clienteRepositorio.save(nuevoCliente);
+        }
+
         return mapearAResponse(empleadoGuardado);
     }
 
-    public Page<EmpleadoResponseDTO> listarTodos(String buscar, Pageable pageable) {
+    public Page<EmpleadoResponseDTO> listarTodos(String buscar, Boolean estado, Pageable pageable) {
         Page<Empleado> pagina;
         if (buscar != null && !buscar.trim().isEmpty()) {
-            pagina = empleadoRepositorio.findByNombreContainingIgnoreCaseOrApellidoContainingIgnoreCaseOrDniContaining(
-                    buscar, buscar, buscar, pageable);
+            pagina = empleadoRepositorio.buscarEmpleadosConRoles(buscar, estado, pageable);
         } else {
-            pagina = empleadoRepositorio.findAll(pageable);
+            pagina = empleadoRepositorio.findAllConRoles(estado, pageable);
         }
         return pagina.map(this::mapearAResponse);
     }
@@ -144,22 +197,69 @@ public class EmpleadoServicio {
         Empleado empleado = empleadoRepositorio.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Empleado no encontrado con ID: " + id));
 
-        if (!empleado.getDni().equals(dto.getDni()) && empleadoRepositorio.existsByDni(dto.getDni())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro empleado con este DNI");
+        Usuario usuario = empleado.getUsuario();
+        
+        if (!usuario.getDni().equals(dto.getDni()) && usuarioRepositorio.existsByDni(dto.getDni())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El DNI proporcionado ya está en uso por otro empleado/cliente.");
         }
 
-        Usuario usuario = empleado.getUsuario();
         if (!usuario.getEmail().equals(dto.getEmail()) && usuarioRepositorio.findByEmail(dto.getEmail()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro usuario con este email");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email proporcionado ya está en uso por otro empleado/cliente.");
+        }
+
+        // Protección de admin principal
+        if (usuario.getEmail().equals("admin@veterinaria.com")) {
+            if (!dto.getEmail().equals("admin@veterinaria.com")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No se puede cambiar el correo del administrador principal.");
+            }
+            if (!dto.getRoles().contains("ROLE_ADMIN")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No se puede remover el rol ADMIN del administrador principal.");
+            }
         }
 
         usuario.setEmail(dto.getEmail());
+        usuario.setNombre(dto.getNombre());
+        usuario.setApellido(dto.getApellido());
+        usuario.setDni(dto.getDni());
+        usuario.setTelefono(dto.getTelefono());
+
+        // Actualizar roles
         Set<Rol> rolesAsignados = new HashSet<>();
+        boolean mantuvoRolCliente = false;
+        boolean teniaAdmin = false;
+        
+        // Revisar si ya era cliente para no quitarle el rol de CLIENTE inadvertidamente
+        for (Rol r : usuario.getRoles()) {
+            if (r.getNombre().equals("ROLE_CLIENTE")) {
+                rolesAsignados.add(r);
+                mantuvoRolCliente = true;
+            }
+            if (r.getNombre().equals("ROLE_ADMIN")) {
+                teniaAdmin = true;
+            }
+        }
+
+        String currentUsername = SecurityContextHolder.getContext().getAuthentication() != null ? 
+                                 SecurityContextHolder.getContext().getAuthentication().getName() : "";
+        boolean asignandoAdmin = dto.getRoles().contains("ROLE_ADMIN");
+
+        // Si se está intentando añadir o quitar el ROLE_ADMIN, solo el admin principal puede hacerlo
+        if (teniaAdmin != asignandoAdmin && !currentUsername.equals("admin@veterinaria.com")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo el administrador principal puede modificar la asignación del rol ADMIN.");
+        }
+
         for (String nombreRol : dto.getRoles()) {
             Rol rol = rolRepositorio.findByNombre(nombreRol)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rol no encontrado: " + nombreRol));
             rolesAsignados.add(rol);
         }
+        
+        // Regla: si le quitan todos los roles laborales y no es cliente, sugerir desactivar o fallar.
+        // El frontend ya no permite enviar roles vacíos, pero por seguridad en backend:
+        if (dto.getRoles().isEmpty() && !mantuvoRolCliente) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Un empleado debe tener al menos un rol. Sugerencia: Desactívelo en lugar de quitarle todos los roles.");
+        }
+
         usuario.setRoles(rolesAsignados);
         usuarioRepositorio.save(usuario);
 
@@ -169,15 +269,23 @@ public class EmpleadoServicio {
         }
         Set<Sede> sedes = new HashSet<>(sedesLista);
 
-        empleado.setNombre(dto.getNombre());
-        empleado.setApellido(dto.getApellido());
-        empleado.setDni(dto.getDni());
-        empleado.setTelefono(dto.getTelefono());
         empleado.setEspecialidad(dto.getEspecialidad());
+        empleado.setNumeroColegiatura(dto.getNumeroColegiatura());
         empleado.setSueldoBase(dto.getSueldoBase());
         empleado.setSedes(sedes);
 
         Empleado empleadoGuardado = empleadoRepositorio.save(empleado);
+
+        // Si se le asignó ROLE_CLIENTE y no tiene registro de Cliente, crearlo
+        boolean tieneRolCliente = usuario.getRoles().stream().anyMatch(r -> r.getNombre().equals("ROLE_CLIENTE"));
+        if (tieneRolCliente && usuario.getCliente() == null) {
+            com.veterinaria.modelos.Cliente nuevoCliente = new com.veterinaria.modelos.Cliente();
+            nuevoCliente.setUsuario(usuario);
+            nuevoCliente.setActivo(usuario.getActivo());
+            nuevoCliente.setEsInvitado(false);
+            clienteRepositorio.save(nuevoCliente);
+        }
+
         return mapearAResponse(empleadoGuardado);
     }
 
@@ -187,6 +295,10 @@ public class EmpleadoServicio {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Empleado no encontrado con ID: " + id));
         
         Usuario usuario = empleado.getUsuario();
+
+        if (usuario.getEmail().equals("admin@veterinaria.com")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El administrador principal no puede ser desactivado o alterado de estado.");
+        }
 
         if (estado) {
             // El admin acaba de darle click a "Activar"
@@ -231,11 +343,12 @@ public class EmpleadoServicio {
                 empleado.getUsuario().getId(),
                 empleado.getUsuario().getEmail(),
                 rolesNombres,
-                empleado.getNombre(),
-                empleado.getApellido(),
-                empleado.getDni(),
-                empleado.getTelefono(),
+                empleado.getUsuario().getNombre(),
+                empleado.getUsuario().getApellido(),
+                empleado.getUsuario().getDni(),
+                empleado.getUsuario().getTelefono(),
                 empleado.getEspecialidad(),
+                empleado.getNumeroColegiatura(),
                 empleado.getSueldoBase(),
                 empleado.getActivo(),
                 sedeIds,

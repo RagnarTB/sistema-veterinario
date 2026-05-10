@@ -24,8 +24,8 @@ public class NotificacionServicio {
         LocalDate fechaObjetivo = LocalDate.now().plusDays(3);
         List<Vacuna> vacunasAVencer = vacunaRepositorio.findByFechaProximaDosis(fechaObjetivo);
         for (Vacuna v : vacunasAVencer) {
-            if (v.getPaciente().getCliente().getEmail() != null) {
-                enviarEmail(v.getPaciente().getCliente().getEmail(),
+            if (v.getPaciente().getCliente().getUsuario() != null && v.getPaciente().getCliente().getUsuario().getEmail() != null) {
+                enviarEmail(v.getPaciente().getCliente().getUsuario().getEmail(),
                         "Recordatorio de Vacuna - Clínica Veterinaria",
                         "Hola, te recordamos que a " + v.getPaciente().getNombre()
                                 + " le toca su vacuna (" + v.getNombreVacuna() + ") el " + fechaObjetivo

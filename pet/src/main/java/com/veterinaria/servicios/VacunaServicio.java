@@ -63,7 +63,7 @@ public class VacunaServicio {
         dto.setPacienteId(vacuna.getPaciente().getId());
         dto.setPacienteNombre(vacuna.getPaciente().getNombre());
         dto.setEmpleadoId(vacuna.getEmpleado().getId());
-        dto.setEmpleadoNombre(vacuna.getEmpleado().getNombre() + " " + vacuna.getEmpleado().getApellido());
+        dto.setEmpleadoNombre(vacuna.getEmpleado().getUsuario().getNombre() + " " + vacuna.getEmpleado().getUsuario().getApellido());
         return dto;
     }
 }

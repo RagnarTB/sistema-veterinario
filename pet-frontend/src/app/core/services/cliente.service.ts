@@ -9,9 +9,10 @@ export class ClienteService {
   private url = `${environment.apiUrl}/clientes`;
   constructor(private http: HttpClient) {}
 
-  listar(page = 0, size = 10, buscar = ''): Observable<Page<ClienteResponse>> {
+  listar(page = 0, size = 10, buscar = '', estado: boolean | null = true): Observable<Page<ClienteResponse>> {
     let params = new HttpParams().set('page', page).set('size', size);
     if (buscar) params = params.set('buscar', buscar);
+    if (estado !== null) params = params.set('estado', estado);
     return this.http.get<Page<ClienteResponse>>(this.url, { params });
   }
 

@@ -57,6 +57,12 @@ public class RolServicio {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se puede cambiar el estado de un rol protegido del sistema");
         }
 
+        // Si se intenta DESHABILITAR, verificar que no haya usuarios usándolo
+        if (!estado && usuarioRepositorio.existsByRoles_Id(id)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                "No se puede deshabilitar este rol porque actualmente está asignado a empleados.");
+        }
+
         rol.setActivo(estado);
         rolRepositorio.save(rol);
     }

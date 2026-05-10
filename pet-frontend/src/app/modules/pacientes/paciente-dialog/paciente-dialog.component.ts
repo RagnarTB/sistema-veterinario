@@ -75,7 +75,7 @@ import { ClienteService } from '../../../core/services/cliente.service';
           </mat-form-field>
 
           <!-- Especie -->
-          <mat-form-field appearance="outline" class="full-width">
+          <mat-form-field appearance="outline" class="full-width" *ngIf="!isEdit">
             <mat-label>Especie</mat-label>
             <mat-icon matPrefix class="prefix-icon">category</mat-icon>
             <mat-select formControlName="especieId" required>
@@ -84,6 +84,12 @@ import { ClienteService } from '../../../core/services/cliente.service';
               </mat-option>
             </mat-select>
             <mat-error *ngIf="form.get('especieId')?.hasError('required')">La especie es requerida</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width" *ngIf="isEdit">
+            <mat-label>Especie</mat-label>
+            <mat-icon matPrefix class="prefix-icon">category</mat-icon>
+            <input matInput [value]="data?.especieNombre" disabled />
           </mat-form-field>
 
           <!-- Raza -->
@@ -96,8 +102,15 @@ import { ClienteService } from '../../../core/services/cliente.service';
           <!-- Fecha de Nacimiento -->
           <mat-form-field appearance="outline" class="full-width col-span-2">
             <mat-label>Fecha de Nacimiento</mat-label>
-            <mat-icon matPrefix class="prefix-icon">event</mat-icon>
-            <input matInput [matDatepicker]="picker" formControlName="fechaNacimiento" [max]="today" placeholder="DD/MM/AAAA" required>
+            
+            <!-- 1. Agregamos (click)="picker.open()" para que el ícono izquierdo también abra el calendario -->
+            <mat-icon matPrefix class="prefix-icon" (click)="picker.open()" style="cursor: pointer;">event</mat-icon>
+            
+            <!-- 2. Agregamos (click)="picker.open()" y 'readonly' -->
+            <!-- 'readonly' evita que el usuario escriba números a lo loco, obligándolo a usar el modal del calendario -->
+            <input matInput [matDatepicker]="picker" formControlName="fechaNacimiento" [max]="today" placeholder="YYYY-MM-DD" required 
+                   (click)="picker.open()" readonly style="cursor: pointer;">
+            
             <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
             <mat-datepicker #picker></mat-datepicker>
             <mat-error *ngIf="form.get('fechaNacimiento')?.hasError('required')">La fecha es requerida</mat-error>
@@ -151,7 +164,7 @@ export class PacienteDialogComponent implements OnInit {
 
   especiesOptions: EspecieResponse[] = [];
   clientesOptions: ClienteResponse[] = [];
-  
+
   clienteSearchCtrl = new FormControl<string | ClienteResponse>('');
   searchingClientes = signal(false);
 
@@ -162,10 +175,10 @@ export class PacienteDialogComponent implements OnInit {
 
     this.form = this.fb.group({
       nombre: [this.data?.nombre || '', Validators.required],
-      especieId: [{value: null, disabled: this.isEdit}, Validators.required],
+      especieId: [{ value: null, disabled: this.isEdit }, Validators.required],
       raza: [this.data?.raza || ''],
-      fechaNacimiento: [{value: this.data?.fechaNacimiento ? new Date(this.data.fechaNacimiento) : null, disabled: this.isEdit}, Validators.required],
-      clienteId: [{value: this.data?.clienteId || null, disabled: this.isEdit}, Validators.required]
+      fechaNacimiento: [{ value: this.data?.fechaNacimiento ? new Date(this.data.fechaNacimiento) : null, disabled: this.isEdit }, Validators.required],
+      clienteId: [{ value: this.data?.clienteId || null, disabled: this.isEdit }, Validators.required]
     });
 
     if (this.isEdit) {
@@ -179,11 +192,15 @@ export class PacienteDialogComponent implements OnInit {
   cargarEspecies() {
     this.especieService.listar().subscribe({
       next: (res) => {
-        // Only load active species when creating or loading list
-        this.especiesOptions = res.filter(e => e.activo || (this.isEdit && e.nombre === this.data?.especie));
+        // Obtenemos el nombre del DTO en mayúsculas de forma segura
+        const especieDTO = this.data?.especieNombre?.toUpperCase();
+
+        // Filtramos las especies activas, o la especie actual si estamos editando
+        this.especiesOptions = res.filter(e => e.activo || (this.isEdit && e.nombre.toUpperCase() === especieDTO));
+
+        // Emparejamos el ID interno para el formulario
         if (this.isEdit && this.data) {
-          // Pre-select especie based on nombre since the DTO from backend lost the ID (it only exposes especieNombre)
-          const matchedEsp = res.find(e => e.nombre === this.data?.especie);
+          const matchedEsp = res.find(e => e.nombre.toUpperCase() === especieDTO);
           if (matchedEsp) {
             this.form.patchValue({ especieId: matchedEsp.id });
           }
@@ -218,7 +235,7 @@ export class PacienteDialogComponent implements OnInit {
           this.form.patchValue({ clienteId: value?.id });
           return of([]);
         }
-        
+
         if (value.length < 2) return of([]);
 
         this.searchingClientes.set(true);
@@ -252,17 +269,17 @@ export class PacienteDialogComponent implements OnInit {
   onSubmit(): void {
     if (this.form.valid) {
       const result: PacienteRequest = { ...this.form.getRawValue() };
-      
+
       if (result.raza) result.raza = result.raza.trim().toUpperCase();
       if (result.nombre) result.nombre = result.nombre.trim();
-      
+
       // Convertir fecha a string ISO YYYY-MM-DD
       const dateVal = this.form.get('fechaNacimiento')?.value;
       if (dateVal) {
         const d = new Date(dateVal);
         result.fechaNacimiento = d.toISOString().split('T')[0];
       }
-      
+
       this.dialogRef.close(result);
     } else {
       // Force display errors

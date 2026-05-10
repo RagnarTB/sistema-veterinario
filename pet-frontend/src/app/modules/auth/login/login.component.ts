@@ -383,8 +383,8 @@ export class LoginComponent implements OnInit {
       next: (res) => {
         this.loading.set(false);
         const roles = res.roles as RolNombre[];
-        if (roles.length > 1) {
-          this.availableRoles.set(roles);
+        if (res.requiresRoleSelection && roles.length > 1) {
+          this.availableRoles.set(roles.filter(r => r !== 'ROLE_PRE_AUTH'));
           this.step.set(2);
         } else {
           this.navigateToDashboard(roles[0]);
@@ -401,8 +401,18 @@ export class LoginComponent implements OnInit {
   }
 
   selectRole(rol: RolNombre): void {
-    this.authService.setActiveRole(rol);
-    this.navigateToDashboard(rol);
+    this.loading.set(true);
+    this.authService.seleccionarRol(rol).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.authService.setActiveRole(rol);
+        this.navigateToDashboard(rol);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.snack.open(err.error?.mensaje || 'Error al seleccionar rol', 'Cerrar', { duration: 3000 });
+      }
+    });
   }
 
   private navigateToDashboard(rol?: RolNombre): void {

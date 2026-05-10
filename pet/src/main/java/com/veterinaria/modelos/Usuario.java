@@ -28,6 +28,19 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
+    private String nombre;
+
+    @Column(nullable = false)
+    private String apellido;
+
+    @Column(nullable = false, unique = true, length = 8)
+    private String dni;
+
+    @Column(nullable = false)
+    private String telefono;
+
+
     // El email será nuestro "username" para el login
     private String email;
 
