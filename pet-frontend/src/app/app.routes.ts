@@ -66,6 +66,16 @@ export const routes: Routes = [
           ),
       },
 
+      // Reportes
+      {
+        path: 'reportes',
+        canActivate: [roleGuard(['ROLE_ADMIN'])],
+        loadComponent: () =>
+          import('./modules/reportes/reportes.component').then(
+            (m) => m.ReportesComponent
+          ),
+      },
+
       // Citas — todos los empleados
       {
         path: 'citas',
@@ -112,12 +122,32 @@ export const routes: Routes = [
           ),
       },
 
+      // Jaulas
+      {
+        path: 'jaulas',
+        canActivate: [roleGuard(['ROLE_ADMIN', 'ROLE_VETERINARIO'])],
+        loadComponent: () =>
+          import('./modules/hospitalizacion/jaulas.component').then(
+            (m) => m.JaulasComponent
+          ),
+      },
+
       // Farmacia (productos + ventas) — todos
       {
         path: 'farmacia',
         loadChildren: () =>
           import('./modules/farmacia/farmacia.routes').then(
             (m) => m.FARMACIA_ROUTES
+          ),
+      },
+
+      // Inventario
+      {
+        path: 'inventario',
+        canActivate: [roleGuard(['ROLE_ADMIN', 'ROLE_RECEPCIONISTA'])],
+        loadComponent: () =>
+          import('./modules/farmacia/inventario.component').then(
+            (m) => m.InventarioComponent
           ),
       },
 
@@ -145,6 +175,16 @@ export const routes: Routes = [
         canActivate: [roleGuard(['ROLE_ADMIN'])],
         loadChildren: () =>
           import('./modules/sedes/sedes.routes').then((m) => m.SEDES_ROUTES),
+      },
+
+      // Servicios Médicos — solo ADMIN
+      {
+        path: 'servicios-medicos',
+        canActivate: [roleGuard(['ROLE_ADMIN'])],
+        loadComponent: () =>
+          import('./modules/servicios-medicos/servicios-medicos.component').then(
+            (m) => m.ServiciosMedicosComponent
+          ),
       },
 
       // Redirección por defecto dentro de /app
