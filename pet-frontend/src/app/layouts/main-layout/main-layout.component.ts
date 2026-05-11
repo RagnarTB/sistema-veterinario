@@ -6,13 +6,21 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../core/services/auth.service';
+import { RolNombre } from '../../core/models/models';
 
 interface NavItem {
   label: string;
   icon: string;
   route: string;
-  roles?: string[];
-  children?: NavItem[];
+  roles?: RolNombre[];
+}
+
+interface NavGroup {
+  label: string;
+  icon: string;
+  roles?: RolNombre[];
+  expanded?: boolean;
+  children: NavItem[];
 }
 
 @Component({
@@ -53,21 +61,36 @@ interface NavItem {
           </button>
         </div>
 
-        <!-- Navegación -->
+        <!-- Navegación Acordeón -->
         <nav class="sidebar-nav">
-          @for (item of visibleNavItems(); track item.route) {
-            <a
-              [routerLink]="item.route"
-              routerLinkActive="active"
-              class="nav-item"
-              [matTooltip]="isCollapsed() ? item.label : ''"
-              matTooltipPosition="right"
-            >
-              <span class="material-icons-round nav-icon">{{ item.icon }}</span>
-              @if (!isCollapsed()) {
-                <span class="nav-label">{{ item.label }}</span>
-              }
-            </a>
+          @for (group of visibleNavGroups(); track group.label) {
+            <div class="nav-group">
+              <button 
+                class="nav-group-header" 
+                [class.active]="group.expanded && !isCollapsed()"
+                (click)="toggleGroup(group)"
+                [matTooltip]="isCollapsed() ? group.label : ''"
+                matTooltipPosition="right">
+                <span class="material-icons-round nav-icon">{{ group.icon }}</span>
+                @if (!isCollapsed()) {
+                  <span class="nav-label">{{ group.label }}</span>
+                  <span class="material-icons-round chevron" [class.rotated]="group.expanded">expand_more</span>
+                }
+              </button>
+              
+              <div class="nav-group-children" [class.open]="group.expanded && !isCollapsed()">
+                @for (child of getVisibleChildren(group); track child.route) {
+                  <a
+                    [routerLink]="child.route"
+                    routerLinkActive="active"
+                    class="nav-item child-item"
+                  >
+                    <span class="material-icons-round nav-icon child-icon">{{ child.icon }}</span>
+                    <span class="nav-label">{{ child.label }}</span>
+                  </a>
+                }
+              </div>
+            </div>
           }
         </nav>
 
@@ -251,19 +274,103 @@ interface NavItem {
       overflow-x: hidden;
     }
 
-    .nav-item {
+    /* Acordeón Styles */
+    .nav-group {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 4px;
+    }
+
+    .nav-group-header {
       display: flex;
       align-items: center;
       gap: 12px;
       padding: 0.65rem 0.85rem;
       border-radius: var(--radius-md);
       color: var(--text-secondary);
-      text-decoration: none;
+      background: transparent;
+      border: none;
+      cursor: pointer;
       font-size: 0.875rem;
+      font-weight: 600;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+      overflow: hidden;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-group-header:hover {
+      background: rgba(255,255,255,0.05);
+      color: var(--text-primary);
+    }
+
+    .nav-group-header.active {
+      background: rgba(0,189,189,0.08);
+      color: var(--color-primary-400);
+    }
+
+    .chevron {
+      margin-left: auto;
+      font-size: 18px;
+      transition: transform var(--transition-normal);
+    }
+
+    .chevron.rotated {
+      transform: rotate(180deg);
+    }
+
+    .nav-group-children {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-left: 14px;
+      margin-top: 2px;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    }
+
+    .nav-group-children.open {
+      max-height: 500px;
+      opacity: 1;
+      padding-bottom: 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0.55rem 0.85rem;
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.85rem;
       font-weight: 500;
       transition: all var(--transition-fast);
       white-space: nowrap;
       overflow: hidden;
+    }
+
+    .child-item {
+      padding-left: 1.5rem;
+      position: relative;
+    }
+
+    .child-item::before {
+      content: '';
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      width: 6px;
+      height: 1px;
+      background: rgba(255,255,255,0.15);
+    }
+
+    .child-icon {
+      font-size: 18px !important;
+      opacity: 0.8;
     }
 
     .nav-item:hover {
@@ -276,7 +383,7 @@ interface NavItem {
       color: var(--color-primary-400);
     }
 
-    .nav-item.active .nav-icon { color: var(--color-primary-400); }
+    .nav-item.active .nav-icon { color: var(--color-primary-400); opacity: 1; }
 
     .nav-icon {
       font-size: 20px;
@@ -440,25 +547,96 @@ export class MainLayoutComponent {
   isMobileOpen = signal(false);
   showMobileOverlay = computed(() => this.isMobileOpen());
 
-  protected readonly navItems: NavItem[] = [
-    { label: 'Dashboard',       icon: 'dashboard',        route: '/app/dashboard',      roles: ['ROLE_ADMIN'] },
-    { label: 'Citas',           icon: 'calendar_month',   route: '/app/citas' },
-    { label: 'Clientes',        icon: 'group',            route: '/app/clientes',        roles: ['ROLE_ADMIN', 'ROLE_RECEPCIONISTA'] },
-    { label: 'Pacientes',       icon: 'pets',             route: '/app/pacientes' },
-    { label: 'Atenciones',      icon: 'medical_services', route: '/app/atenciones',     roles: ['ROLE_ADMIN', 'ROLE_VETERINARIO'] },
-    { label: 'Hospitalización', icon: 'local_hospital',   route: '/app/hospitalizacion', roles: ['ROLE_ADMIN', 'ROLE_VETERINARIO'] },
-    { label: 'Farmacia',        icon: 'local_pharmacy',   route: '/app/farmacia' },
-    { label: 'Caja',            icon: 'point_of_sale',    route: '/app/caja',            roles: ['ROLE_ADMIN', 'ROLE_RECEPCIONISTA'] },
-    { label: 'Empleados',       icon: 'badge',            route: '/app/empleados',       roles: ['ROLE_ADMIN'] },
-    { label: 'Sedes',           icon: 'location_on',      route: '/app/sedes',           roles: ['ROLE_ADMIN'] },
+  protected readonly navGroups: NavGroup[] = [
+    {
+      label: 'Panel de Control',
+      icon: 'dashboard',
+      roles: ['ROLE_ADMIN'],
+      expanded: false,
+      children: [
+        { label: 'Dashboard', route: '/app/dashboard', icon: 'bar_chart' },
+        { label: 'Reportes', route: '/app/reportes', icon: 'pie_chart' },
+      ]
+    },
+    {
+      label: 'Gestión Clínica',
+      icon: 'medical_services',
+      expanded: true,
+      children: [
+        { label: 'Citas', route: '/app/citas', icon: 'calendar_today' },
+        { label: 'Atenciones', route: '/app/atenciones', icon: 'healing', roles: ['ROLE_ADMIN', 'ROLE_VETERINARIO'] },
+        { label: 'Clientes', route: '/app/clientes', icon: 'people', roles: ['ROLE_ADMIN', 'ROLE_RECEPCIONISTA'] },
+        { label: 'Pacientes', route: '/app/pacientes', icon: 'pets' },
+      ]
+    },
+    {
+      label: 'Hospitalización',
+      icon: 'local_hospital',
+      roles: ['ROLE_ADMIN', 'ROLE_VETERINARIO'],
+      expanded: false,
+      children: [
+        { label: 'Panel Internados', route: '/app/hospitalizacion', icon: 'bed' },
+        { label: 'Gestión de Jaulas', route: '/app/jaulas', icon: 'grid_view' },
+      ]
+    },
+    {
+      label: 'Comercial y Logística',
+      icon: 'storefront',
+      expanded: false,
+      children: [
+        { label: 'Punto de Venta', route: '/app/farmacia', icon: 'point_of_sale' },
+        { label: 'Inventario', route: '/app/inventario', icon: 'inventory_2', roles: ['ROLE_ADMIN', 'ROLE_RECEPCIONISTA'] },
+      ]
+    },
+    {
+      label: 'Finanzas',
+      icon: 'account_balance',
+      roles: ['ROLE_ADMIN', 'ROLE_RECEPCIONISTA'],
+      expanded: false,
+      children: [
+        { label: 'Caja Diaria', route: '/app/caja', icon: 'payments' },
+      ]
+    },
+    {
+      label: 'Administración',
+      icon: 'admin_panel_settings',
+      roles: ['ROLE_ADMIN'],
+      expanded: false,
+      children: [
+        { label: 'Empleados', route: '/app/empleados', icon: 'badge' },
+        { label: 'Sedes', route: '/app/sedes', icon: 'location_on' },
+        { label: 'Catálogo Servicios', route: '/app/servicios-medicos', icon: 'design_services' },
+      ]
+    }
   ];
 
-  visibleNavItems = computed(() => {
-    return this.navItems.filter(item => {
-      if (!item.roles) return true;
-      return this.authService.hasAnyRole(...(item.roles as any[]));
+  visibleNavGroups = computed(() => {
+    return this.navGroups.filter(group => {
+      // Si el grupo no tiene roles, o el usuario tiene alguno de los roles requeridos
+      if (!group.roles || this.authService.hasAnyRole(...group.roles)) {
+        // Filtrar también para asegurar que haya al menos 1 hijo visible
+        return this.getVisibleChildren(group).length > 0;
+      }
+      return false;
     });
   });
+
+  getVisibleChildren(group: NavGroup): NavItem[] {
+    return group.children.filter(child => {
+      if (!child.roles) return true;
+      return this.authService.hasAnyRole(...child.roles);
+    });
+  }
+
+  toggleGroup(group: NavGroup): void {
+    if (this.isCollapsed()) {
+      // Si está colapsado y hacen clic, lo expandimos globalmente y abrimos este grupo
+      this.isCollapsed.set(false);
+      group.expanded = true;
+    } else {
+      group.expanded = !group.expanded;
+    }
+  }
 
   constructor(public authService: AuthService) {}
 

@@ -62,7 +62,7 @@ export interface EmpleadoDialogData {
           <mat-tab label="Horarios">
             <app-horarios-veterinario 
               [veterinarioId]="data.empleado?.id || 0" 
-              [sedes]="sedes()">
+              [sedes]="sedesAsignadas()">
             </app-horarios-veterinario>
           </mat-tab>
           <mat-tab label="Días Bloqueados">
@@ -366,6 +366,7 @@ export class EmpleadoDialogComponent implements OnInit {
   colegiaturaResultado = signal<ColegiaturaValidacion | null>(null);
 
   sedes = signal<SedeResponse[]>([]);
+  sedesAsignadas = signal<SedeResponse[]>([]);
   roles = signal<RolResponse[]>([]);
 
   constructor(
@@ -403,6 +404,16 @@ export class EmpleadoDialogComponent implements OnInit {
 
   ngOnInit() {
     this.cargarDatosAdicionales();
+    
+    // Actualizar sedes asignadas dinámicamente
+    this.form.get('sedeIds')?.valueChanges.subscribe(ids => {
+      this.actualizarSedesAsignadas(ids);
+    });
+  }
+
+  actualizarSedesAsignadas(ids: number[]) {
+    if (!ids) ids = [];
+    this.sedesAsignadas.set(this.sedes().filter(s => ids.includes(s.id)));
   }
 
   cargarDatosAdicionales() {
@@ -423,6 +434,9 @@ export class EmpleadoDialogComponent implements OnInit {
         if (chiclayo) {
           this.form.get('sedeIds')?.setValue([chiclayo.id]);
         }
+      } else {
+        // Inicializar las sedes asignadas en edición
+        this.actualizarSedesAsignadas(this.form.get('sedeIds')?.value);
       }
     });
 

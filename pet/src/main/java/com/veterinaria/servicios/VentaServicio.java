@@ -32,7 +32,11 @@ import com.veterinaria.respositorios.ProductoRepositorio;
 import com.veterinaria.respositorios.ServicioMedicoRepositorio;
 import com.veterinaria.respositorios.VentaRepositorio;
 import com.veterinaria.respositorios.InventarioSedeRepositorio;
+import com.veterinaria.respositorios.LoteInventarioRepositorio;
+import com.veterinaria.respositorios.MovimientoInventarioRepositorio;
 import com.veterinaria.modelos.InventarioSede;
+import com.veterinaria.modelos.LoteInventario;
+import com.veterinaria.modelos.MovimientoInventario;
 
 import jakarta.transaction.Transactional;
 
@@ -46,6 +50,8 @@ public class VentaServicio {
     private final CajaRepositorio cajaRepositorio;
     private final MovimientoCajaRespositorio movimientoCajaRespositorio;
     private final InventarioSedeRepositorio inventarioSedeRepositorio;
+    private final LoteInventarioRepositorio loteInventarioRepositorio;
+    private final MovimientoInventarioRepositorio movimientoInventarioRepositorio;
 
     public VentaServicio(VentaRepositorio ventaRepositorio,
             ClienteRepositorio clienteRepositorio,
@@ -53,7 +59,9 @@ public class VentaServicio {
             ServicioMedicoRepositorio servicioMedicoRepositorio,
             CajaRepositorio cajaRepositorio,
             MovimientoCajaRespositorio movimientoCajaRespositorio,
-            InventarioSedeRepositorio inventarioSedeRepositorio) {
+            InventarioSedeRepositorio inventarioSedeRepositorio,
+            LoteInventarioRepositorio loteInventarioRepositorio,
+            MovimientoInventarioRepositorio movimientoInventarioRepositorio) {
         this.ventaRepositorio = ventaRepositorio;
         this.clienteRepositorio = clienteRepositorio;
         this.productoRepositorio = productoRepositorio;
@@ -61,6 +69,8 @@ public class VentaServicio {
         this.cajaRepositorio = cajaRepositorio;
         this.movimientoCajaRespositorio = movimientoCajaRespositorio;
         this.inventarioSedeRepositorio = inventarioSedeRepositorio;
+        this.loteInventarioRepositorio = loteInventarioRepositorio;
+        this.movimientoInventarioRepositorio = movimientoInventarioRepositorio;
     }
 
     // =========================
@@ -128,9 +138,23 @@ public class VentaServicio {
                             "Stock insuficiente para el producto: " + producto.getNombre());
                 }
 
-                // Descontar stock con BigDecimal.subtract()
+                // Descontar stock global
                 inventario.setStockActual(inventario.getStockActual().subtract(detalleDto.getCantidad()));
                 inventarioSedeRepositorio.save(inventario);
+
+                // ---- FIFO: descontar de lotes (los más próximos a vencer primero) ----
+                descontarStockFIFO(detalleDto.getProductoId(), dto.getSedeId(), detalleDto.getCantidad());
+
+                // ---- Registrar movimiento de Kardex ----
+                MovimientoInventario movKardex = new MovimientoInventario();
+                movKardex.setProducto(producto);
+                movKardex.setSede(cajaAbierta.getSede());
+                movKardex.setTipoMovimiento(com.veterinaria.modelos.TipoMovimiento.SALIDA_VENTA);
+                movKardex.setCantidad(detalleDto.getCantidad());
+                movKardex.setMotivo("Venta");
+                movKardex.setFecha(LocalDateTime.now());
+                movKardex.setResponsable(empleadoActual);
+                movimientoInventarioRepositorio.save(movKardex);
 
                 BigDecimal subtotal = producto.getPrecio().multiply(detalleDto.getCantidad());
 
@@ -226,14 +250,36 @@ public class VentaServicio {
         // Devolver stock SOLO de los ítems que son productos físicos
         for (DetalleVenta detalle : venta.getDetalles()) {
             if (detalle.getProducto() != null) {
+                // 1. Aumentar stock global
                 InventarioSede inventario = inventarioSedeRepositorio.findByProductoIdAndSedeId(detalle.getProducto().getId(), venta.getCaja().getSede().getId())
                         .orElse(null);
                 if (inventario != null) {
                     inventario.setStockActual(inventario.getStockActual().add(detalle.getCantidad()));
                     inventarioSedeRepositorio.save(inventario);
                 }
+
+                // 2. Devolver stock al lote más reciente (o al que no esté vencido)
+                List<LoteInventario> lotes = loteInventarioRepositorio.findByProductoIdAndSedeIdOrderByFechaVencimientoDesc(
+                    detalle.getProducto().getId(), venta.getCaja().getSede().getId());
+                
+                if (!lotes.isEmpty()) {
+                    LoteInventario loteDestino = lotes.get(0); // El más nuevo o con vencimiento más lejano
+                    loteDestino.setStockRestante(loteDestino.getStockRestante().add(detalle.getCantidad()));
+                    loteDestino.setActivo(true);
+                    loteInventarioRepositorio.save(loteDestino);
+                }
+
+                // 3. Registrar movimiento de Kardex por anulación
+                MovimientoInventario movKardex = new MovimientoInventario();
+                movKardex.setProducto(detalle.getProducto());
+                movKardex.setSede(venta.getCaja().getSede());
+                movKardex.setTipoMovimiento(com.veterinaria.modelos.TipoMovimiento.AJUSTE_POSITIVO);
+                movKardex.setCantidad(detalle.getCantidad());
+                movKardex.setMotivo("Devolución por anulación de Venta #" + venta.getId());
+                movKardex.setFecha(LocalDateTime.now());
+                movKardex.setResponsable(empleadoActual);
+                movimientoInventarioRepositorio.save(movKardex);
             }
-            // Los servicios no tienen stock → no hay nada que devolver
         }
 
         MovimientoCaja egreso = new MovimientoCaja();
@@ -289,5 +335,31 @@ public class VentaServicio {
 
         respuesta.setDetalles(detallesDTO);
         return respuesta;
+    }
+
+    // =========================
+    // FIFO: Descontar stock de los lotes más antiguos (próximos a vencer)
+    // =========================
+    private void descontarStockFIFO(Long productoId, Long sedeId, BigDecimal cantidadRequerida) {
+        List<LoteInventario> lotes = loteInventarioRepositorio.findLotesParaFIFO(productoId, sedeId);
+
+        BigDecimal restante = cantidadRequerida;
+
+        for (LoteInventario lote : lotes) {
+            if (restante.compareTo(BigDecimal.ZERO) <= 0) break;
+
+            BigDecimal disponible = lote.getStockRestante();
+            if (disponible.compareTo(restante) >= 0) {
+                // Este lote cubre toda la cantidad restante
+                lote.setStockRestante(disponible.subtract(restante));
+                restante = BigDecimal.ZERO;
+            } else {
+                // Este lote no alcanza, lo vaciamos y seguimos con el siguiente
+                restante = restante.subtract(disponible);
+                lote.setStockRestante(BigDecimal.ZERO);
+                lote.setActivo(false); // lote agotado
+            }
+            loteInventarioRepositorio.save(lote);
+        }
     }
 }

@@ -48,17 +48,14 @@ public class HorarioVeterinarioServicio {
         Sede sede = sedeRepositorio.findById(dto.getSedeId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
 
-        // Validar que el veterinario pertenezca a la sede
-        boolean perteneceSede = veterinario.getSedes().stream().anyMatch(s -> s.getId().equals(sede.getId()));
-        if (!perteneceSede) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El veterinario no pertenece a la sede seleccionada");
-        }
+        // Nota: Removida la validación de perteneceSede porque el usuario 
+        // podría estar asignándole la sede en este momento en el frontend antes de guardar el empleado.
 
-        // Validar que no tenga ya un horario asignado para ese mismo día EN ESA SEDE
-        if (horarioRepositorio.findByVeterinarioIdAndDiaSemanaAndSedeId(dto.getVeterinarioId(), dto.getDiaSemana(), dto.getSedeId())
+        // Validar que no tenga ya un horario asignado para ese mismo día en NINGUNA SEDE
+        if (horarioRepositorio.findByVeterinarioIdAndDiaSemana(dto.getVeterinarioId(), dto.getDiaSemana())
                 .isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "El veterinario ya tiene un horario asignado para este día en esta sede");
+                    "El veterinario ya tiene un horario asignado para este día en una sede. Solo puede trabajar en una sede por día.");
         }
 
         if (dto.getHoraEntrada().isAfter(dto.getHoraSalida())) {

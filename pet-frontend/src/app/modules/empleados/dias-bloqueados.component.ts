@@ -9,8 +9,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 
 import { DiaBloqueadoService, DiaBloqueadoRequest, DiaBloqueadoResponse } from '../../core/services/dia-bloqueado.service';
+import { ModalConfirmacionComponent } from '../../shared/components/modal-confirmacion/modal-confirmacion.component';
 
 @Component({
   selector: 'app-dias-bloqueados',
@@ -94,7 +96,8 @@ export class DiasBloqueadosComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private diaBloqueadoService: DiaBloqueadoService,
-    private snack: MatSnackBar
+    private snack: MatSnackBar,
+    private dialog: MatDialog
   ) {
     this.form = this.fb.group({
       fecha: ['', Validators.required],
@@ -150,15 +153,29 @@ export class DiasBloqueadosComponent implements OnInit {
   }
 
   eliminar(id: number) {
-    this.loading.set(true);
-    this.diaBloqueadoService.eliminar(id).subscribe({
-      next: () => {
-        this.snack.open('Día desbloqueado', 'Cerrar', { duration: 3000 });
-        this.cargarDias();
-      },
-      error: () => {
-        this.snack.open('Error al eliminar', 'Cerrar', { duration: 3000 });
-        this.loading.set(false);
+    const dialogRef = this.dialog.open(ModalConfirmacionComponent, {
+      width: '400px',
+      data: {
+        title: 'Desbloquear Día',
+        message: '¿Estás seguro de que deseas desbloquear este día? El veterinario volverá a estar disponible.',
+        confirmText: 'Sí, Desbloquear',
+        isDestructive: true
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        this.loading.set(true);
+        this.diaBloqueadoService.eliminar(id).subscribe({
+          next: () => {
+            this.snack.open('Día desbloqueado', 'Cerrar', { duration: 3000 });
+            this.cargarDias();
+          },
+          error: () => {
+            this.snack.open('Error al eliminar', 'Cerrar', { duration: 3000 });
+            this.loading.set(false);
+          }
+        });
       }
     });
   }

@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.CrossOrigin;
 
 import com.veterinaria.dtos.ReniecResponseDTO;
+import com.veterinaria.dtos.SunatRucResponseDTO;
 import com.veterinaria.servicios.ReniecServicio;
+import com.veterinaria.servicios.SunatServicio;
 
 @RestController
 @RequestMapping("/api/externo/reniec")
@@ -19,6 +21,9 @@ public class ExternoController {
 
     @Autowired
     private ReniecServicio reniecServicio;
+
+    @Autowired
+    private SunatServicio sunatServicio;
 
     @Autowired
     private com.veterinaria.respositorios.UsuarioRepositorio usuarioRepositorio;
@@ -51,6 +56,12 @@ public class ExternoController {
             data.setFullName(u.getNombre() + " " + u.getApellido());
         }
 
+        return ResponseEntity.ok(data);
+    }
+
+    @GetMapping("/sunat/ruc/{numero}")
+    public ResponseEntity<SunatRucResponseDTO> consultarRuc(@PathVariable String numero) {
+        SunatRucResponseDTO data = sunatServicio.consultarRuc(numero);
         return ResponseEntity.ok(data);
     }
 

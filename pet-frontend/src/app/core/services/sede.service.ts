@@ -9,6 +9,10 @@ export class SedeService {
   private url = `${environment.apiUrl}/sedes`;
   constructor(private http: HttpClient) {}
 
+  listarActivas(): Observable<SedeResponse[]> {
+    return this.http.get<SedeResponse[]>(`${this.url}/activas`);
+  }
+
   listar(page: number = 0, size: number = 10, search: string = ''): Observable<any> {
     let params = new HttpParams()
       .set('page', page.toString())

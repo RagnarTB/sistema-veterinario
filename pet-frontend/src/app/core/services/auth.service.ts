@@ -16,8 +16,9 @@ import {
 const TOKEN_KEY   = 'vet_token';
 const REFRESH_KEY = 'vet_refresh_token';
 const EMAIL_KEY   = 'vet_email';
-const ROLES_KEY   = 'vet_roles';   // <-- guardamos roles directamente
-const ACTIVE_ROLE_KEY = 'vet_active_role'; // <-- rol con el que se ingresó
+const ROLES_KEY   = 'vet_roles';   
+const ACTIVE_ROLE_KEY = 'vet_active_role'; 
+const SEDE_IDS_KEY = 'vet_sede_ids'; // <-- sedes asignadas
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -28,11 +29,13 @@ export class AuthService {
   private _email  = signal<string | null>(localStorage.getItem(EMAIL_KEY));
   private _roles  = signal<RolNombre[]>(this.loadRolesFromStorage());
   private _activeRole = signal<RolNombre | null>(localStorage.getItem(ACTIVE_ROLE_KEY) as RolNombre | null);
+  private _sedeIds = signal<number[]>(this.loadSedeIdsFromStorage());
 
   readonly isAuthenticated = computed(() => !!this._token());
   readonly currentEmail    = computed(() => this._email());
   readonly currentRoles    = computed(() => this._roles());
   readonly activeRole      = computed(() => this._activeRole());
+  readonly currentSedeIds  = computed(() => this._sedeIds());
 
   constructor(private http: HttpClient, private router: Router) {}
 
@@ -147,9 +150,11 @@ export class AuthService {
     localStorage.setItem(REFRESH_KEY, res.refreshToken);
     localStorage.setItem(EMAIL_KEY,   res.email);
     localStorage.setItem(ROLES_KEY,   JSON.stringify(roles));
+    localStorage.setItem(SEDE_IDS_KEY, JSON.stringify(res.sedeIds ?? []));
     this._token.set(res.token);
     this._email.set(res.email);
     this._roles.set(roles);
+    this._sedeIds.set(res.sedeIds ?? []);
 
     if (roles.length === 1) {
       this.setActiveRole(roles[0]);
@@ -166,16 +171,27 @@ export class AuthService {
     localStorage.removeItem(EMAIL_KEY);
     localStorage.removeItem(ROLES_KEY);
     localStorage.removeItem(ACTIVE_ROLE_KEY);
+    localStorage.removeItem(SEDE_IDS_KEY);
     this._token.set(null);
     this._email.set(null);
     this._roles.set([]);
     this._activeRole.set(null);
+    this._sedeIds.set([]);
     this.router.navigate(['/login']);
   }
 
   private loadRolesFromStorage(): RolNombre[] {
     try {
       const raw = localStorage.getItem(ROLES_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private loadSedeIdsFromStorage(): number[] {
+    try {
+      const raw = localStorage.getItem(SEDE_IDS_KEY);
       return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
