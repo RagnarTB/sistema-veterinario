@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -10,6 +10,9 @@ import { ProductoDialogComponent } from './components/producto-dialog/producto-d
 import { GestionCatalogosDialogComponent } from './components/gestion-catalogos-dialog/gestion-catalogos-dialog.component';
 import { InventarioService } from './services/inventario.service';
 import { StockMinimoDialogComponent } from './components/stock-minimo-dialog/stock-minimo-dialog.component';
+import { AuthService } from '../../core/services/auth.service';
+import { SedeService } from '../../core/services/sede.service';
+import { SedeResponse } from '../../core/models/models';
 
 @Component({
   selector: 'app-inventario',
@@ -30,28 +33,48 @@ import { StockMinimoDialogComponent } from './components/stock-minimo-dialog/sto
           <p class="page-subtitle">Gestión de insumos, medicinas y productos de retail</p>
         </div>
         <div class="flex gap-3">
-          <button class="btn btn-secondary" (click)="abrirGestionCatalogos()">
-            <span class="material-icons-round">settings</span>
-            Catálogos
-          </button>
-          <button class="btn btn-primary" (click)="abrirModalNuevo()">
-            <span class="material-icons-round">add</span>
-            Nuevo Producto
-          </button>
+          @if (esAdmin()) {
+            <button class="btn btn-secondary" (click)="abrirGestionCatalogos()">
+              <span class="material-icons-round">settings</span>
+              Catálogos
+            </button>
+          }
+          @if (puedeOperar()) {
+            <button class="btn btn-primary" (click)="abrirModalNuevo()">
+              <span class="material-icons-round">add</span>
+              Nuevo Producto
+            </button>
+          }
         </div>
       </div>
 
       <!-- FILTERS -->
-      <div class="card p-4 mb-6 flex flex-wrap gap-4 items-center">
+      <div class="card p-4 mb-6 flex flex-wrap gap-4 items-end">
         <div class="search-box flex-1" style="min-width: 250px;">
-          <span class="material-icons-round search-icon">search</span>
-          <input
-            type="text"
-            [(ngModel)]="busqueda"
-            (ngModelChange)="onSearch()"
-            class="form-control search-input"
-            placeholder="Buscar por nombre o marca..."
-          >
+          <label class="text-xs font-bold" style="color: var(--text-muted); display: block; margin-bottom: 4px;">BUSCAR PRODUCTO</label>
+          <div style="position: relative;">
+            <span class="material-icons-round search-icon">search</span>
+            <input
+              type="text"
+              [(ngModel)]="busqueda"
+              (ngModelChange)="onSearch()"
+              class="form-control search-input"
+              placeholder="Nombre o marca..."
+            >
+          </div>
+        </div>
+
+        <div style="min-width: 220px;">
+          <label class="text-xs font-bold" style="color: var(--text-muted); display: block; margin-bottom: 4px;">SEDE ACTUAL</label>
+          <div style="position: relative;">
+            <span class="material-icons-round" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #60a5fa; font-size: 18px;">storefront</span>
+            <select [(ngModel)]="sedeSeleccionadaId" (change)="onSedeChange()" class="form-control" 
+                    style="padding-left: 36px; border-color: #60a5fa; font-weight: 600; cursor: pointer;">
+              @for (sede of sedes(); track sede.id) {
+                <option [ngValue]="sede.id">{{ sede.nombre }}</option>
+              }
+            </select>
+          </div>
         </div>
       </div>
 
@@ -94,23 +117,33 @@ import { StockMinimoDialogComponent } from './components/stock-minimo-dialog/sto
                     </div>
                   </td>
                   <td class="text-center">
-                    <div class="stock-minimo-badge" (click)="editarStockMinimo(producto)" matTooltip="Click para configurar stock mínimo">
-                      <span class="material-icons-round">notifications_active</span>
-                      <span>{{ producto.stockMinimo || 0 }}</span>
-                    </div>
+                    @if (puedeOperar()) {
+                      <div class="stock-minimo-badge" (click)="editarStockMinimo(producto)" matTooltip="Click para configurar stock mínimo">
+                        <span class="material-icons-round">notifications_active</span>
+                        <span>{{ producto.stockMinimo || 0 }}</span>
+                      </div>
+                    } @else {
+                      <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500;">
+                        {{ producto.stockMinimo || 0 }}
+                      </div>
+                    }
                   </td>
                   <td>
-                    <label class="toggle-switch">
+                    <label class="toggle-switch" [style.opacity]="puedeOperar() ? 1 : 0.5" [style.pointer-events]="puedeOperar() ? 'auto' : 'none'">
                       <input type="checkbox"
                              [checked]="producto.activo"
+                             [disabled]="!puedeOperar()"
                              (change)="confirmarCambioEstado(producto)">
                       <span class="slider"></span>
                     </label>
                   </td>
                   <td>
                     <div class="flex justify-center gap-2">
-                      <button class="btn-icon" (click)="abrirModalEditar(producto)" matTooltip="Ver Detalles / Kardex / Lotes">
-                        <span class="material-icons-round" style="color: #60a5fa">inventory_2</span>
+                      <button class="btn-icon" (click)="abrirModalEditar(producto)" 
+                              [matTooltip]="puedeOperar() ? 'Gestionar producto (Lotes/Kardex)' : 'Ver detalle (Lectura)'">
+                        <span class="material-icons-round" [style.color]="puedeOperar() ? '#60a5fa' : '#94a3b8'">
+                          {{ puedeOperar() ? 'edit_note' : 'visibility' }}
+                        </span>
                       </button>
                     </div>
                   </td>
@@ -190,10 +223,22 @@ import { StockMinimoDialogComponent } from './components/stock-minimo-dialog/sto
 export class InventarioComponent implements OnInit {
   private productoService = inject(ProductoService);
   private inventarioService = inject(InventarioService);
+  private authService = inject(AuthService);
+  private sedeService = inject(SedeService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
   productos: Producto[] = [];
+  sedes = signal<SedeResponse[]>([]);
+  sedeSeleccionadaId = 1;
+  userSedeId = 1;
+
+  esAdmin = () => this.authService.isAdmin();
+  puedeOperar = () => {
+    if (this.esAdmin()) return true;
+    const misSedes = this.authService.currentSedeIds();
+    return misSedes.includes(this.sedeSeleccionadaId);
+  };
   busqueda = '';
   currentPage = 0;
   pageSize = 10;
@@ -203,11 +248,27 @@ export class InventarioComponent implements OnInit {
   private searchTimeout: any;
 
   ngOnInit() {
+    this.userSedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
+    this.sedeSeleccionadaId = this.userSedeId;
+    this.cargarSedes();
+    this.cargarProductos();
+  }
+
+  cargarSedes() {
+    this.sedeService.listarActivas().subscribe({
+      next: (res) => this.sedes.set(res),
+      error: () => {}
+    });
+  }
+
+  onSedeChange() {
+    this.sedeSeleccionadaId = Number(this.sedeSeleccionadaId);
+    this.currentPage = 0;
     this.cargarProductos();
   }
 
   cargarProductos() {
-    const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
+    const sedeId = this.sedeSeleccionadaId;
     this.productoService.listar(this.busqueda, this.currentPage, this.pageSize, sedeId)
       .subscribe({
         next: (page) => {
@@ -236,7 +297,11 @@ export class InventarioComponent implements OnInit {
     const dialogRef = this.dialog.open(ProductoDialogComponent, {
       width: '800px',
       disableClose: true,
-      data: { isEditing: false }
+      data: { 
+        isEditing: false,
+        sedeId: this.sedeSeleccionadaId,
+        readOnly: !this.puedeOperar()
+      }
     });
 
     dialogRef.afterClosed().subscribe(result => {
@@ -248,7 +313,12 @@ export class InventarioComponent implements OnInit {
     const dialogRef = this.dialog.open(ProductoDialogComponent, {
       width: '800px',
       disableClose: true,
-      data: { isEditing: true, producto }
+      data: { 
+        isEditing: true, 
+        producto,
+        sedeId: this.sedeSeleccionadaId,
+        readOnly: !this.puedeOperar()
+      }
     });
 
     dialogRef.afterClosed().subscribe(result => {
@@ -296,6 +366,11 @@ export class InventarioComponent implements OnInit {
   }
 
   editarStockMinimo(producto: Producto) {
+    if (!this.puedeOperar()) {
+      this.mostrarMensaje('No tiene permisos para modificar el stock en esta sede');
+      return;
+    }
+
     const dialogRef = this.dialog.open(StockMinimoDialogComponent, {
       width: '400px',
       data: { 
@@ -306,7 +381,7 @@ export class InventarioComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(nuevoStock => {
       if (nuevoStock !== undefined && nuevoStock !== null) {
-        const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
+        const sedeId = this.sedeSeleccionadaId;
         this.inventarioService.actualizarStockMinimo(producto.id, sedeId, nuevoStock).subscribe({
           next: () => {
             this.mostrarMensaje('Stock mínimo actualizado');

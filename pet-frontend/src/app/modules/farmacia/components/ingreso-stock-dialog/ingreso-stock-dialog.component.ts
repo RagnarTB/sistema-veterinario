@@ -146,7 +146,7 @@ export class IngresoStockDialogComponent {
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<IngresoStockDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { producto: any; proveedores: any[] },
+    @Inject(MAT_DIALOG_DATA) public data: { producto: any; proveedores: any[]; sedeId: number },
     private inventarioService: InventarioService,
     private snackBar: MatSnackBar
   ) {
@@ -198,13 +198,25 @@ export class IngresoStockDialogComponent {
       }
     }
 
+    if (this.form.get('tieneVencimiento')?.value) {
+      const fecha = this.form.get('fechaVencimiento')?.value;
+      if (!fecha) {
+        this.msg('Debe ingresar una fecha de vencimiento');
+        return;
+      }
+      if (fecha < this.fechaMinima) {
+        this.msg('La fecha de vencimiento no puede ser anterior a hoy');
+        return;
+      }
+    }
+
     this.confirmando.set(true);
   }
 
   guardar() {
     this.cargando.set(true);
 
-    const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
+    const sedeId = this.data.sedeId || Number(localStorage.getItem('vet_sede_id')) || 1;
     const values = this.form.value;
 
     const payload = {

@@ -158,16 +158,18 @@ import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-
               <div style="padding: 1.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                   <h3 style="font-weight: 600; color: var(--text-primary); margin: 0;">Lotes Activos</h3>
-                  <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-secondary" style="padding: 0.4rem 0.85rem; color: #f87171; border-color: rgba(248,113,113,0.3);" (click)="abrirSalidaStock()">
-                      <span class="material-icons-round" style="font-size: 16px;">remove_circle_outline</span>
-                      Salida / Ajuste
-                    </button>
-                    <button class="btn btn-primary" style="padding: 0.4rem 0.85rem;" (click)="abrirIngresoStock()">
-                      <span class="material-icons-round" style="font-size: 16px;">add_box</span>
-                      Registrar Ingreso
-                    </button>
-                  </div>
+                  @if (!data.readOnly) {
+                    <div style="display: flex; gap: 8px;">
+                      <button class="btn btn-secondary" style="padding: 0.4rem 0.85rem; color: #f87171; border-color: rgba(248,113,113,0.3);" (click)="abrirSalidaStock()">
+                        <span class="material-icons-round" style="font-size: 16px;">remove_circle_outline</span>
+                        Salida / Ajuste
+                      </button>
+                      <button class="btn btn-primary" style="padding: 0.4rem 0.85rem;" (click)="abrirIngresoStock()">
+                        <span class="material-icons-round" style="font-size: 16px;">add_box</span>
+                        Registrar Ingreso
+                      </button>
+                    </div>
+                  }
                 </div>
 
                 <div class="table-container">
@@ -220,9 +222,13 @@ import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-
                                 <button class="btn-icon" (click)="cancelarEdicionLote()" title="Cancelar"><span class="material-icons-round" style="color: #f87171; font-size: 18px;">close</span></button>
                               </div>
                             } @else {
-                              <button class="btn-icon" (click)="iniciarEdicionLote(lote)" title="Editar Lote">
-                                <span class="material-icons-round" style="color: #60a5fa; font-size: 18px;">edit</span>
-                              </button>
+                              @if (!data.readOnly) {
+                                <button class="btn-icon" (click)="iniciarEdicionLote(lote)" title="Editar Lote">
+                                  <span class="material-icons-round" style="color: #60a5fa; font-size: 18px;">edit</span>
+                                </button>
+                              } @else {
+                                <span class="material-icons-round" style="color: var(--text-muted); font-size: 18px;">lock</span>
+                              }
                             }
                           </td>
                         </tr>
@@ -415,7 +421,12 @@ export class ProductoDialogComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<ProductoDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { isEditing: boolean; producto?: any },
+    @Inject(MAT_DIALOG_DATA) public data: { 
+      isEditing: boolean; 
+      producto?: any; 
+      sedeId: number; 
+      readOnly?: boolean 
+    },
     private productoService: ProductoService,
     private catalogoService: CatalogoService,
     private inventarioService: InventarioService,
@@ -439,6 +450,7 @@ export class ProductoDialogComponent implements OnInit {
 
     if (this.data.isEditing && this.data.producto) {
       this.form.patchValue(this.data.producto);
+      if (this.data.readOnly) this.form.disable();
       this.cargarLotes();
       this.cargarMovimientos();
     }
@@ -500,7 +512,7 @@ export class ProductoDialogComponent implements OnInit {
   }
 
   cargarLotes() {
-    const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
+    const sedeId = this.data.sedeId || Number(localStorage.getItem('vet_sede_id')) || 1;
     this.inventarioService.obtenerLotes(this.data.producto.id, sedeId).subscribe({
       next: (res) => {
         // Enriquecer lotes con el último motivo de edición si existe en el kardex
@@ -528,7 +540,8 @@ export class ProductoDialogComponent implements OnInit {
           ...this.data.producto,
           unidadCompraPermiteDecimales: unidad ? unidad.permiteDecimales : false
         },
-        proveedores: this.proveedores()
+        proveedores: this.proveedores(),
+        sedeId: this.data.sedeId
       }
     });
 
@@ -551,7 +564,8 @@ export class ProductoDialogComponent implements OnInit {
         producto: {
           ...this.data.producto,
           unidadVentaPermiteDecimales: unidad ? unidad.permiteDecimales : false
-        }
+        },
+        sedeId: this.data.sedeId
       }
     });
 
@@ -578,7 +592,7 @@ export class ProductoDialogComponent implements OnInit {
   }
 
   cargarMovimientos() {
-    const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
+    const sedeId = this.data.sedeId || Number(localStorage.getItem('vet_sede_id')) || 1;
     this.inventarioService.obtenerMovimientos(this.data.producto.id, sedeId).subscribe({
       next: (res) => this.movimientos.set(res),
       error: () => {}
@@ -634,6 +648,11 @@ export class ProductoDialogComponent implements OnInit {
     if (!huboCambios) {
       this.snackBar.open('No se detectaron cambios en el lote. Puede cerrar con (X).', 'Entendido', { duration: 3000 });
       this.cancelarEdicionLote();
+      return;
+    }
+
+    if (this.loteEditData.fechaVencimiento && this.loteEditData.fechaVencimiento < this.fechaHoy) {
+      this.snackBar.open('La fecha de vencimiento no puede ser anterior a hoy', 'Cerrar', { duration: 3000 });
       return;
     }
 

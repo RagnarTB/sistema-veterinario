@@ -130,7 +130,7 @@ export class SalidaStockDialogComponent {
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<SalidaStockDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { producto: any },
+    @Inject(MAT_DIALOG_DATA) public data: { producto: any; sedeId: number },
     private inventarioService: InventarioService,
     private snackBar: MatSnackBar
   ) {
@@ -182,7 +182,7 @@ export class SalidaStockDialogComponent {
 
   guardar() {
     this.cargando.set(true);
-    const sedeId = Number(localStorage.getItem('vet_sede_id')) || 1;
+    const sedeId = this.data.sedeId || Number(localStorage.getItem('vet_sede_id')) || 1;
 
     const payload = {
       productoId: this.data.producto.id,

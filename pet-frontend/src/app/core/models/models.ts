@@ -34,6 +34,7 @@ export interface AuthResponse {
   refreshToken: string;
   email: string;
   roles: string[];
+  sedeIds?: number[];
   requiresRoleSelection: boolean;
 }
 
