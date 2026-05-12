@@ -137,7 +137,14 @@ public class AuthServicio {
 
         String refreshToken = refreshTokenServicio.crearRefreshTokenParaUsuario(usuario);
 
-        return new AuthResponseDTO(token, refreshToken, dto.getEmail(), rolesDisponibles, requiresRoleSelection);
+        java.util.List<Long> sedeIds = null;
+        if (usuario.getEmpleado() != null) {
+            sedeIds = usuario.getEmpleado().getSedes().stream()
+                .map(com.veterinaria.modelos.Sede::getId)
+                .collect(java.util.stream.Collectors.toList());
+        }
+
+        return new AuthResponseDTO(token, refreshToken, dto.getEmail(), rolesDisponibles, sedeIds, requiresRoleSelection);
     }
 
     @Transactional
@@ -181,7 +188,15 @@ public class AuthServicio {
         extraClaims.put("roles", roles);
 
         String token = jwtServicio.generarToken(extraClaims, userDetails);
-        return new AuthResponseDTO(token, refreshTokenNuevo, usuario.getEmail(), roles);
+
+        java.util.List<Long> sedeIds = null;
+        if (usuario.getEmpleado() != null) {
+            sedeIds = usuario.getEmpleado().getSedes().stream()
+                .map(com.veterinaria.modelos.Sede::getId)
+                .collect(java.util.stream.Collectors.toList());
+        }
+
+        return new AuthResponseDTO(token, refreshTokenNuevo, usuario.getEmail(), roles, sedeIds);
     }
 
     @Transactional
@@ -287,7 +302,14 @@ public class AuthServicio {
                 String token = jwtServicio.generarToken(extraClaims, userDetails);
                 String refreshToken = refreshTokenServicio.crearRefreshTokenParaUsuario(usuario);
 
-                return new AuthResponseDTO(token, refreshToken, email, rolesDisponibles, requiresRoleSelection);
+                java.util.List<Long> sedeIds = null;
+                if (usuario.getEmpleado() != null) {
+                    sedeIds = usuario.getEmpleado().getSedes().stream()
+                        .map(com.veterinaria.modelos.Sede::getId)
+                        .collect(java.util.stream.Collectors.toList());
+                }
+
+                return new AuthResponseDTO(token, refreshToken, email, rolesDisponibles, sedeIds, requiresRoleSelection);
             } else {
                 // Usuario existe pero inactivo (Falta Completar Registro)
                 if (usuario.getNombre() == null) {
@@ -462,7 +484,14 @@ public class AuthServicio {
         String tokenJwt = jwtServicio.generarToken(extraClaims, userDetails);
         String refreshToken = refreshTokenServicio.crearRefreshTokenParaUsuario(usuario);
 
-        return new AuthResponseDTO(tokenJwt, refreshToken, email, rolesDisponibles, requiresRoleSelection);
+        java.util.List<Long> sedeIds = null;
+        if (usuario.getEmpleado() != null) {
+            sedeIds = usuario.getEmpleado().getSedes().stream()
+                .map(com.veterinaria.modelos.Sede::getId)
+                .collect(java.util.stream.Collectors.toList());
+        }
+
+        return new AuthResponseDTO(tokenJwt, refreshToken, email, rolesDisponibles, sedeIds, requiresRoleSelection);
     }
 
     @Transactional
@@ -487,10 +516,13 @@ public class AuthServicio {
         String token = jwtServicio.generarToken(extraClaims, userDetails);
         String refreshToken = refreshTokenServicio.crearRefreshTokenParaUsuario(usuario);
 
-        java.util.List<String> todosMisRoles = usuario.getRoles().stream()
-                .map(Rol::getNombre)
+        java.util.List<Long> sedeIds = null;
+        if (usuario.getEmpleado() != null) {
+            sedeIds = usuario.getEmpleado().getSedes().stream()
+                .map(com.veterinaria.modelos.Sede::getId)
                 .collect(java.util.stream.Collectors.toList());
+        }
 
-        return new AuthResponseDTO(token, refreshToken, email, java.util.Collections.singletonList(rolSeleccionado));
+        return new AuthResponseDTO(token, refreshToken, email, java.util.Collections.singletonList(rolSeleccionado), sedeIds);
     }
 }

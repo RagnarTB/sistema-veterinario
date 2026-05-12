@@ -38,6 +38,10 @@ public class SedeServicio {
         return sedeRepositorio.findAll(pageable).map(this::mapear);
     }
 
+    public java.util.List<SedeResponseDTO> listarActivas() {
+        return sedeRepositorio.findAllByActivoTrue().stream().map(this::mapear).toList();
+    }
+
     public SedeResponseDTO buscarPorId(Long id) {
         Sede sede = sedeRepositorio.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
