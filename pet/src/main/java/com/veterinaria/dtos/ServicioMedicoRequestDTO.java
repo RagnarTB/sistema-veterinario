@@ -27,4 +27,6 @@ public class ServicioMedicoRequestDTO {
     @NotNull(message = "El tiempo de limpieza (buffer) es obligatorio")
     @Min(value = 0, message = "El buffer no puede ser negativo")
     private Integer bufferMinutos;
+
+    private com.veterinaria.modelos.TipoServicio tipoServicio;
 }

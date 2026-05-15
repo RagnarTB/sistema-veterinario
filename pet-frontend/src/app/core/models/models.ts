@@ -202,11 +202,15 @@ export interface ColegiaturaValidacion {
 // =============================================
 // SERVICIO MÉDICO
 // =============================================
+export type TipoServicio = 'CONSULTA' | 'VACUNACION' | 'CIRUGIA' | 'HOSPITALIZACION' | 'ESTETICA' | 'EXAMEN' | 'OTRO';
+
 export interface ServicioMedicoRequest {
   nombre: string;
   descripcion?: string;
   duracionMinutos: number;
+  bufferMinutos: number;
   precio: number;
+  tipoServicio?: TipoServicio;
   activo?: boolean;
 }
 
@@ -215,7 +219,27 @@ export interface ServicioMedicoResponse {
   nombre: string;
   descripcion?: string;
   duracionMinutos: number;
+  bufferMinutos: number;
   precio: number;
+  tipoServicio?: TipoServicio;
+  activo: boolean;
+}
+
+export interface ServicioMedicoInsumoRequest {
+  productoId: number;
+  cantidadEstimada: number;
+  notas?: string;
+}
+
+export interface ServicioMedicoInsumoResponse {
+  id: number;
+  servicioId: number;
+  productoId: number;
+  productoNombre: string;
+  unidadVentaNombre: string;
+  permiteDecimales: boolean;
+  cantidadEstimada: number;
+  notas?: string;
   activo: boolean;
 }
 

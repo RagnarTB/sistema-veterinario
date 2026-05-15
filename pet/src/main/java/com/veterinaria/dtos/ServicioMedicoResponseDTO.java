@@ -16,5 +16,6 @@ public class ServicioMedicoResponseDTO {
     private BigDecimal precio;
     private Integer duracionMinutos;
     private Integer bufferMinutos;
+    private com.veterinaria.modelos.TipoServicio tipoServicio;
     private Boolean activo;
 }

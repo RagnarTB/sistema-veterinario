@@ -21,6 +21,9 @@ public class ServicioMedicoController {
     @Autowired
     private ServicioMedicoServicio servicioMedicoServicio;
 
+    @Autowired
+    private com.veterinaria.servicios.ServicioMedicoInsumoServicio insumoServicio;
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')") // Solo el administrador puede crear servicios
     public ResponseEntity<ServicioMedicoResponseDTO> crearServicio(@Valid @RequestBody ServicioMedicoRequestDTO dto) {
@@ -30,8 +33,8 @@ public class ServicioMedicoController {
     @GetMapping
     // Abierto a cualquier usuario autenticado (Recepcionista, Veterinario, etc.)
     // para que puedan llenar selects en Angular
-    public ResponseEntity<List<ServicioMedicoResponseDTO>> listarServicios() {
-        return ResponseEntity.ok(servicioMedicoServicio.listarTodos());
+    public ResponseEntity<List<ServicioMedicoResponseDTO>> listarServicios(@RequestParam(required = false) Boolean activo) {
+        return ResponseEntity.ok(servicioMedicoServicio.listarTodos(activo));
     }
 
     @GetMapping("/{id}")
@@ -51,6 +54,49 @@ public class ServicioMedicoController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> cambiarEstadoServicio(@PathVariable Long id, @RequestParam Boolean activo) {
         servicioMedicoServicio.cambiarEstado(id, activo);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ========== INSUMOS DEL SERVICIO (PLANTILLA) ==========
+
+    @GetMapping("/{servicioId}/insumos")
+    public ResponseEntity<List<com.veterinaria.dtos.ServicioMedicoInsumoResponseDTO>> listarInsumos(@PathVariable Long servicioId) {
+        return ResponseEntity.ok(insumoServicio.listarPorServicio(servicioId));
+    }
+
+    @PostMapping("/{servicioId}/insumos")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<com.veterinaria.dtos.ServicioMedicoInsumoResponseDTO> agregarInsumo(
+            @PathVariable Long servicioId, 
+            @Valid @RequestBody com.veterinaria.dtos.ServicioMedicoInsumoRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(insumoServicio.agregar(servicioId, dto));
+    }
+
+    @PutMapping("/{servicioId}/insumos/{insumoId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<com.veterinaria.dtos.ServicioMedicoInsumoResponseDTO> actualizarInsumo(
+            @PathVariable Long servicioId,
+            @PathVariable Long insumoId,
+            @Valid @RequestBody com.veterinaria.dtos.ServicioMedicoInsumoRequestDTO dto) {
+        return ResponseEntity.ok(insumoServicio.actualizar(insumoId, dto));
+    }
+
+    @PatchMapping("/{servicioId}/insumos/{insumoId}/estado")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> cambiarEstadoInsumo(
+            @PathVariable Long servicioId,
+            @PathVariable Long insumoId,
+            @RequestParam Boolean activo) {
+        insumoServicio.cambiarEstado(insumoId, activo);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{servicioId}/insumos/{insumoId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> eliminarInsumo(
+            @PathVariable Long servicioId,
+            @PathVariable Long insumoId) {
+        insumoServicio.eliminarPermanente(insumoId);
         return ResponseEntity.noContent().build();
     }
 }

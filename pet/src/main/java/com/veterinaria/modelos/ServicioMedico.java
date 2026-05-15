@@ -32,5 +32,8 @@ public class ServicioMedico {
     @Column(nullable = false)
     private Integer bufferMinutos = 0; // Tiempo extra para limpiar consultorio. Ej: 10
 
+    @Enumerated(EnumType.STRING)
+    private TipoServicio tipoServicio;
+
     private Boolean activo = true; // Para no borrar servicios (Soft Delete)
 }

@@ -10,7 +10,7 @@ import { ModalConfirmacionComponent } from '../../../../shared/components/modal-
 @Component({
   selector: 'app-gestion-catalogos-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, MatTabsModule, ModalConfirmacionComponent],
+  imports: [CommonModule, FormsModule, MatDialogModule, MatTabsModule],
   template: `
     <div class="dialog-container">
       <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center;">

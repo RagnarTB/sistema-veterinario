@@ -22,20 +22,31 @@ public class ServicioMedicoServicio {
     }
 
     public ServicioMedicoResponseDTO guardar(ServicioMedicoRequestDTO dto) {
+        if (servicioRepositorio.existsByNombreIgnoreCase(dto.getNombre())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe un servicio con ese nombre");
+        }
+
         ServicioMedico servicio = new ServicioMedico();
         servicio.setNombre(dto.getNombre());
         servicio.setDescripcion(dto.getDescripcion());
         servicio.setPrecio(dto.getPrecio());
         servicio.setDuracionMinutos(dto.getDuracionMinutos());
         servicio.setBufferMinutos(dto.getBufferMinutos());
+        servicio.setTipoServicio(dto.getTipoServicio());
         // 'activo' ya viene en true por defecto desde el modelo
 
         ServicioMedico guardado = servicioRepositorio.save(servicio);
         return mapearAResponse(guardado);
     }
 
-    public List<ServicioMedicoResponseDTO> listarTodos() {
-        return servicioRepositorio.findAll().stream()
+    public List<ServicioMedicoResponseDTO> listarTodos(Boolean activo) {
+        List<ServicioMedico> lista;
+        if (activo != null) {
+            lista = servicioRepositorio.findByActivo(activo);
+        } else {
+            lista = servicioRepositorio.findAll();
+        }
+        return lista.stream()
                 .map(this::mapearAResponse)
                 .collect(Collectors.toList());
     }
@@ -50,11 +61,16 @@ public class ServicioMedicoServicio {
         ServicioMedico servicio = servicioRepositorio.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
 
+        if (servicioRepositorio.existsByNombreIgnoreCaseAndIdNot(dto.getNombre(), id)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya existe otro servicio con ese nombre");
+        }
+
         servicio.setNombre(dto.getNombre());
         servicio.setDescripcion(dto.getDescripcion());
         servicio.setPrecio(dto.getPrecio());
         servicio.setDuracionMinutos(dto.getDuracionMinutos());
         servicio.setBufferMinutos(dto.getBufferMinutos());
+        servicio.setTipoServicio(dto.getTipoServicio());
 
         ServicioMedico actualizado = servicioRepositorio.save(servicio);
         return mapearAResponse(actualizado);
@@ -72,6 +88,7 @@ public class ServicioMedicoServicio {
     private ServicioMedicoResponseDTO mapearAResponse(ServicioMedico s) {
         return new ServicioMedicoResponseDTO(
                 s.getId(), s.getNombre(), s.getDescripcion(),
-                s.getPrecio(), s.getDuracionMinutos(), s.getBufferMinutos(), s.getActivo());
+                s.getPrecio(), s.getDuracionMinutos(), s.getBufferMinutos(), 
+                s.getTipoServicio(), s.getActivo());
     }
 }
