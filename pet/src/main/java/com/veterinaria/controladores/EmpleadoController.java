@@ -33,8 +33,9 @@ public class EmpleadoController {
     public Page<EmpleadoResponseDTO> listarTodos(
             Pageable pageable,
             @RequestParam(required = false) String buscar,
-            @RequestParam(required = false) Boolean estado) {
-        return empleadoServicio.listarTodos(buscar, estado, pageable);
+            @RequestParam(required = false) Boolean estado,
+            @RequestParam(required = false) Long sedeId) {
+        return empleadoServicio.listarTodos(buscar, estado, sedeId, pageable);
     }
 
     @GetMapping("/{id}")

@@ -69,7 +69,7 @@ import { InventarioService } from '../../services/inventario.service';
                   </label>
                 </div>
                 @if (form.get('tieneVencimiento')?.value) {
-                  <input type="date" formControlName="fechaVencimiento" class="form-control" [min]="fechaMinima">
+                  <input type="date" formControlName="fechaVencimiento" class="form-control" [min]="fechaMinima" onkeydown="return false">
                 }
               </div>
 

@@ -103,8 +103,14 @@ public class AuthGoogleServicio {
 
                 return new AuthResponseDTO(token, refreshToken, email, rolesDisponibles, sedeIds, requiresRoleSelection);
             } else {
-                // Usuario existe pero inactivo (Falta Completar Registro)
-                if (usuario.getNombre() == null) {
+                // Usuario existe pero inactivo
+                if (usuario.getDni() != null && !usuario.getDni().trim().isEmpty()) {
+                    // Si ya tiene DNI, significa que completó el registro y luego fue desactivado por un Admin.
+                    throw new com.veterinaria.excepciones.BusinessLogicException("Su cuenta ha sido desactivada. Por favor, comuníquese con el personal de la clínica.");
+                }
+
+                // Falta Completar Registro
+                if (usuario.getNombre() == null || usuario.getNombre().trim().isEmpty()) {
                     usuario.setNombre((String) payload.get("given_name"));
                     usuario.setApellido((String) payload.get("family_name"));
                     usuarioRepositorio.save(usuario);

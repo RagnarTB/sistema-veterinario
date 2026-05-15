@@ -86,7 +86,7 @@ class PacienteControllerTest {
                                 true);
                 Page<PacienteResponseDTO> paginaMock = new PageImpl<>(List.of(pacienteMock));
 
-                when(pacienteServicio.listarTodos(any(), any())).thenReturn(paginaMock);
+                when(pacienteServicio.listarTodos(any(), any(), any())).thenReturn(paginaMock);
 
                 mockMvc.perform(get("/api/pacientes?page=0&size=10")
                                 .contentType(MediaType.APPLICATION_JSON))

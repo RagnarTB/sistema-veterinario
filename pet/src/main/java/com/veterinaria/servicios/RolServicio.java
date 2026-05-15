@@ -36,7 +36,7 @@ public class RolServicio {
             nombre = "ROLE_" + nombre;
         }
 
-        if (rolRepositorio.findByNombre(nombre).isPresent()) {
+        if (rolRepositorio.existsByNombreIgnoreCase(nombre)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El rol ya existe");
         }
 

@@ -2,6 +2,7 @@ import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+import { CustomValidators } from '../../../shared/utils/custom-validators';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../../core/services/auth.service';
@@ -131,7 +132,7 @@ export class CompletarRegistroComponent implements OnInit {
     private snack: MatSnackBar
   ) {
     this.form = this.fb.group({
-      dni: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(8)]],
+      dni: ['', [Validators.required, CustomValidators.dni]],
       nombre: ['', Validators.required,],
       apellido: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],

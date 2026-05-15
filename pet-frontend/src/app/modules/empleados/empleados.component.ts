@@ -1,6 +1,6 @@
 import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormControl, FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,7 +12,8 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 import { EmpleadoService } from '../../core/services/empleado.service';
-import { EmpleadoResponse } from '../../core/models/models';
+import { SedeService } from '../../core/services/sede.service';
+import { EmpleadoResponse, SedeResponse } from '../../core/models/models';
 import { EmpleadoDialogComponent } from './empleado-dialog.component';
 import { RolesDialogComponent } from './roles-dialog.component';
 import { ModalConfirmacionComponent } from '../../shared/components/modal-confirmacion/modal-confirmacion.component';
@@ -23,6 +24,7 @@ import { ModalConfirmacionComponent } from '../../shared/components/modal-confir
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    FormsModule,
     MatTableModule,
     MatPaginatorModule,
     MatButtonModule,
@@ -58,6 +60,20 @@ import { ModalConfirmacionComponent } from '../../shared/components/modal-confir
               class="form-control pl-10 w-full" 
               placeholder="Buscar por DNI, nombre o apellido..." 
             />
+          </div>
+
+          <!-- Selector de Sedes -->
+          <div style="min-width: 220px;">
+            <div style="position: relative;">
+              <mat-icon style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #60a5fa; font-size: 18px;">storefront</mat-icon>
+              <select [(ngModel)]="sedeSeleccionada" (change)="onSedeChange()" class="form-control" 
+                      style="padding-left: 36px; border-color: #60a5fa; font-weight: 600; cursor: pointer;">
+                <option [ngValue]="null">Todas las Sedes</option>
+                @for (sede of sedes(); track sede.id) {
+                  <option [ngValue]="sede.id">{{ sede.nombre }}</option>
+                }
+              </select>
+            </div>
           </div>
         </div>
 
@@ -164,10 +180,14 @@ export class EmpleadosComponent implements OnInit {
   loading = signal(false);
   estadoActual = signal<boolean | null>(true);
 
+  sedes = signal<SedeResponse[]>([]);
+  sedeSeleccionada = signal<number | null>(null);
+
   searchControl = new FormControl('');
 
   constructor(
     private empleadoService: EmpleadoService,
+    private sedeService: SedeService,
     private dialog: MatDialog,
     private snack: MatSnackBar
   ) {
@@ -181,13 +201,26 @@ export class EmpleadosComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.cargarSedes();
+    this.cargarEmpleados();
+  }
+
+  cargarSedes() {
+    this.sedeService.listar().subscribe({
+      next: (sedes) => this.sedes.set(sedes),
+      error: () => console.error('Error al cargar sedes')
+    });
+  }
+
+  onSedeChange() {
+    this.pageIndex.set(0);
     this.cargarEmpleados();
   }
 
   cargarEmpleados() {
     this.loading.set(true);
     const searchTerm = this.searchControl.value || '';
-    this.empleadoService.listar(this.pageIndex(), this.pageSize(), searchTerm, this.estadoActual()).subscribe({
+    this.empleadoService.listar(this.pageIndex(), this.pageSize(), searchTerm, this.estadoActual(), this.sedeSeleccionada() || undefined).subscribe({
       next: (page: any) => {
         this.dataSource.set(page.content);
         this.totalElements.set(page.totalElements);

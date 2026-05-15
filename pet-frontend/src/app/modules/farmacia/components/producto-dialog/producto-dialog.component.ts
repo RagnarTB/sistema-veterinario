@@ -25,7 +25,7 @@ import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-
         </button>
       </div>
 
-      <div class="dialog-content" style="padding: 0 !important;">
+      <div class="dialog-content" style="padding: 0 !important; max-height: 80vh; overflow-y: auto;">
         <mat-tab-group animationDuration="200ms" class="custom-tabs" [selectedIndex]="tabIndex()">
           
           <!-- TAB 1: DATOS BÁSICOS -->
@@ -195,7 +195,7 @@ import { SalidaStockDialogComponent } from '../salida-stock-dialog/salida-stock-
                           </td>
                           <td>
                             @if (editandoLoteId() === lote.id) {
-                              <input type="date" [(ngModel)]="loteEditData.fechaVencimiento" class="form-control" [min]="fechaHoy" style="padding: 2px 4px; font-size: 0.75rem;">
+                              <input type="date" [(ngModel)]="loteEditData.fechaVencimiento" class="form-control" [min]="fechaHoy" onkeydown="return false" style="padding: 2px 4px; font-size: 0.75rem;">
                             } @else {
                               <span class="badge" [class.badge-error]="estaPorVencer(lote.fechaVencimiento)">
                                 {{ lote.fechaVencimiento || 'Sin fecha' }}
@@ -523,6 +523,12 @@ export class ProductoDialogComponent implements OnInit {
           return { ...lote, ultimoMotivo: ultimaEdicion?.motivo };
         });
         this.lotes.set(lotesEnriquecidos);
+        
+        // Actualizar el stock actual en memoria para que las salidas reflejen el valor correcto
+        const totalStock = res.reduce((acc, lote) => acc + (lote.stockRestante || 0), 0);
+        if (this.data.producto) {
+          this.data.producto.stockActual = totalStock;
+        }
       },
       error: () => {}
     });

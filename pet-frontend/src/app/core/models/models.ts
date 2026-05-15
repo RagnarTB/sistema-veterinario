@@ -245,6 +245,8 @@ export interface HorarioVeterinarioResponse {
 export interface DiaBloqueadoRequest {
   veterinarioId: number;
   fecha: string;
+  fechaFin?: string;
+  tipo: string;
   motivo?: string;
 }
 
@@ -252,6 +254,8 @@ export interface DiaBloqueadoResponse {
   id: number;
   veterinarioNombre: string;
   fecha: string;
+  fechaFin?: string;
+  tipo: string;
   motivo?: string;
 }
 

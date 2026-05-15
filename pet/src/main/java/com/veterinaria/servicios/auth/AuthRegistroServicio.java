@@ -103,6 +103,9 @@ public class AuthRegistroServicio {
             if (u.getActivo()) {
                 throw new BusinessLogicException("El email ya está registrado y activo");
             } else {
+                if (u.getDni() != null && !u.getDni().trim().isEmpty()) {
+                     throw new BusinessLogicException("Su cuenta ha sido desactivada. Por favor, comuníquese con el personal de la clínica.");
+                }
                 cliente = u.getCliente();
                 if (cliente == null) throw new BusinessLogicException("Error: Cliente no encontrado");
             }

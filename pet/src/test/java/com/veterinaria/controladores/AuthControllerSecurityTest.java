@@ -1,7 +1,7 @@
 package com.veterinaria.controladores;
 
 import com.veterinaria.dtos.MensajeResponseDTO;
-import com.veterinaria.servicios.AuthServicio;
+import com.veterinaria.servicios.auth.AuthLoginServicio;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -25,7 +25,7 @@ class AuthControllerSecurityTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private AuthServicio authServicio;
+    private AuthLoginServicio authLoginServicio;
 
     @Test
     void cambiarPasswordSinAutenticacionDebeRetornar401() throws Exception {
@@ -45,7 +45,7 @@ class AuthControllerSecurityTest {
     @Test
     @WithMockUser(username = "user@test.com", roles = "CLIENTE")
     void cambiarPasswordConAutenticacionDebeRetornar200() throws Exception {
-        when(authServicio.cambiarPassword(anyString(), any()))
+        when(authLoginServicio.cambiarPassword(anyString(), any()))
                 .thenReturn(new MensajeResponseDTO("ok"));
 
         String json = """

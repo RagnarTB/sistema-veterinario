@@ -90,12 +90,16 @@ public interface CitaRepositorio extends JpaRepository<Cita, Long> {
             ")")
     Page<Cita> buscarEnSede(@Param("sedeId") Long sedeId, @Param("buscar") String buscar, Pageable pageable);
 
-    @Query("SELECT COUNT(c) > 0 FROM Cita c WHERE c.veterinario.id = :veterinarioId AND c.fecha = :fecha AND c.estado IN :estados")
-    boolean existenCitasPendientesPorVeterinarioYFecha(
+    @Query("SELECT COUNT(c) > 0 FROM Cita c WHERE c.veterinario.id = :veterinarioId AND c.fecha BETWEEN :fechaInicio AND :fechaFin AND c.estado IN :estados")
+    boolean existenCitasPendientesPorVeterinarioYRangoFechas(
             @Param("veterinarioId") Long veterinarioId,
-            @Param("fecha") LocalDate fecha,
+            @Param("fechaInicio") LocalDate fechaInicio,
+            @Param("fechaFin") LocalDate fechaFin,
             @Param("estados") List<EstadoCita> estados);
 
-    @Query("SELECT COUNT(c) > 0 FROM Cita c WHERE c.fecha = :fecha AND c.estado IN :estados")
-    boolean existenCitasPendientesPorFecha(@Param("fecha") LocalDate fecha, @Param("estados") List<EstadoCita> estados);
+    @Query("SELECT COUNT(c) > 0 FROM Cita c WHERE c.fecha BETWEEN :fechaInicio AND :fechaFin AND c.estado IN :estados")
+    boolean existenCitasPendientesPorRangoFechas(
+            @Param("fechaInicio") LocalDate fechaInicio, 
+            @Param("fechaFin") LocalDate fechaFin, 
+            @Param("estados") List<EstadoCita> estados);
 }

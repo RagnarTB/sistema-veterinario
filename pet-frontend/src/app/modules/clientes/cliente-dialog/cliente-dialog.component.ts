@@ -2,6 +2,7 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
+import { CustomValidators } from '../../../shared/utils/custom-validators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -196,10 +197,10 @@ export class ClienteDialogComponent implements OnInit {
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      nombre: [{ value: this.data?.nombre || '', disabled: this.isEdit }, Validators.required,],
-      apellido: [{ value: this.data?.apellido || '', disabled: this.isEdit }, Validators.required],
-      dni: [{ value: this.data?.dni || '', disabled: this.isEdit }, [Validators.required, Validators.pattern('^[0-9]{8}$')]],
-      telefono: [this.data?.telefono || '', [Validators.required, Validators.pattern('^[0-9]{9}$')]],
+      nombre: [{ value: this.data?.nombre || '', disabled: this.isEdit }, [Validators.required, CustomValidators.noWhitespace]],
+      apellido: [{ value: this.data?.apellido || '', disabled: this.isEdit }, [Validators.required, CustomValidators.noWhitespace]],
+      dni: [{ value: this.data?.dni || '', disabled: this.isEdit }, [Validators.required, CustomValidators.dni]],
+      telefono: [this.data?.telefono || '', [Validators.required, CustomValidators.telefono]],
       email: [{ value: this.data?.email || '', disabled: this.isEdit }, [Validators.required, Validators.email]],
       direccion: [(this.data as any)?.direccion || '']
     });

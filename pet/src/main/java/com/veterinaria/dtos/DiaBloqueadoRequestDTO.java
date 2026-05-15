@@ -12,6 +12,11 @@ public class DiaBloqueadoRequestDTO {
     @NotNull(message = "La fecha es obligatoria")
     private LocalDate fecha;
 
+    private LocalDate fechaFin;
+
+    @NotBlank(message = "El tipo es obligatorio")
+    private String tipo;
+
     @NotBlank(message = "El motivo es obligatorio (Ej: Feriado, Vacaciones, Fumigación)")
     private String motivo;
 

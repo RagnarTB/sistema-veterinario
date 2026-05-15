@@ -151,6 +151,11 @@ export class AuthService {
     localStorage.setItem(EMAIL_KEY,   res.email);
     localStorage.setItem(ROLES_KEY,   JSON.stringify(roles));
     localStorage.setItem(SEDE_IDS_KEY, JSON.stringify(res.sedeIds ?? []));
+    
+    // Si no hay una sede guardada y el usuario tiene sedes asignadas, establecemos la primera por defecto
+    if (!localStorage.getItem('vet_sede_id') && res.sedeIds && res.sedeIds.length > 0) {
+      localStorage.setItem('vet_sede_id', res.sedeIds[0].toString());
+    }
     this._token.set(res.token);
     this._email.set(res.email);
     this._roles.set(roles);
@@ -172,6 +177,7 @@ export class AuthService {
     localStorage.removeItem(ROLES_KEY);
     localStorage.removeItem(ACTIVE_ROLE_KEY);
     localStorage.removeItem(SEDE_IDS_KEY);
+    localStorage.removeItem('vet_sede_id');
     this._token.set(null);
     this._email.set(null);
     this._roles.set([]);
