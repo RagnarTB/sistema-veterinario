@@ -29,7 +29,7 @@ public class Paciente {
 
     private String nombre;
     // Actualizacion de la especie con tabla
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "especie_id", nullable = false)
     private Especie especie;
     private String raza;

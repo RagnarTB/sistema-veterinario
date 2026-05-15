@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.FetchType;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -37,19 +38,19 @@ public class DetalleVenta {
     private BigDecimal subtotal;
 
     // Venta tiene @Audited, esta relación es segura (ambas auditadas)
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venta_id")
     private Venta venta;
 
     // Producto no es @Audited → se declara NOT_AUDITED
     @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "producto_id")
     private Producto producto;
 
     // ServicioMedico no es @Audited → se declara NOT_AUDITED
     @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "servicio_medico_id")
     private ServicioMedico servicio;
 }

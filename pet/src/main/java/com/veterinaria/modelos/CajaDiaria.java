@@ -15,6 +15,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.FetchType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -51,12 +52,12 @@ public class CajaDiaria {
 
     // Sede no es @Audited → se declara NOT_AUDITED para evitar EnversMappingException
     @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sede_id")
     private Sede sede;
 
     @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "empleado_id", nullable = false)
     private Empleado empleado;
     

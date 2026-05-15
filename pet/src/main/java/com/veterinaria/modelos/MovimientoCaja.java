@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.FetchType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,7 +34,7 @@ public class MovimientoCaja {
     private BigDecimal monto;
     private TipoMovimiento tipoMovimiento;
     private LocalDateTime fechaHora;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "caja_diaria_id", nullable = false)
     private CajaDiaria cajaDiaria;
 

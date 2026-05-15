@@ -48,12 +48,12 @@ public class AtencionMedica {
     private LocalDateTime fechaCreacion;
 
     @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cita_id")
     private Cita cita;
 
     @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "veterinario_id")
     private Empleado veterinario;
 

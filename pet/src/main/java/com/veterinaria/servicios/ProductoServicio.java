@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import com.veterinaria.excepciones.ResourceNotFoundException;
 
 import com.veterinaria.dtos.ProductoRequestDTO;
 import com.veterinaria.dtos.ProductoResponseDTO;
@@ -83,8 +84,7 @@ public class ProductoServicio {
     public ProductoResponseDTO buscarPorId(Long id, Long sedeId) {
         return productoRepositorio.findById(id)
                 .map(p -> this.mapearAResponseDTO(p, sedeId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Producto no encontrado con ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con ID: " + id));
     }
 
     // =========================
@@ -92,8 +92,7 @@ public class ProductoServicio {
     // =========================
     public ProductoResponseDTO actualizar(Long id, ProductoRequestDTO dto, Long sedeId) {
         Producto productodb = productoRepositorio.findById(id).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Producto no encontrado con ID: " + id));
+                () -> new ResourceNotFoundException("Producto no encontrado con ID: " + id));
 
         productodb.setNombre(normalizarTexto(dto.getNombre()));
         productodb.setDescripcion(dto.getDescripcion());
@@ -130,8 +129,7 @@ public class ProductoServicio {
     // =========================
     public void cambiarEstado(Long id, Boolean estado) {
         Producto productodb = productoRepositorio.findById(id).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Producto no encontrado con id: " + id));
+                () -> new ResourceNotFoundException("Producto no encontrado con id: " + id));
         productodb.setActivo(estado);
         productoRepositorio.save(productodb);
     }

@@ -59,6 +59,36 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatusCode()).body(errorResponse);
     }
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarResourceNotFound(ResourceNotFoundException ex) {
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "No Encontrado",
+                ex.getMessage(),
+                null);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    @ExceptionHandler(BusinessLogicException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarBusinessLogic(BusinessLogicException ex) {
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                "Error de Negocio",
+                ex.getMessage(),
+                null);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(TokenInvalidException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarTokenInvalid(TokenInvalidException ex) {
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpStatus.UNAUTHORIZED.value(),
+                "Token Inválido",
+                ex.getMessage(),
+                null);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
     // 4. Atrapa errores de autorización (el usuario no tiene permiso) → 403 FORBIDDEN
     // IMPORTANTE: debe ir ANTES del handler genérico de Exception para que no lo tape
     @ExceptionHandler(AccessDeniedException.class)

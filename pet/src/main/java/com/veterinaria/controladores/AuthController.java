@@ -20,8 +20,6 @@ import com.veterinaria.dtos.GoogleLoginRequestDTO;
 import com.veterinaria.dtos.SolicitarRegistroCorreoDTO;
 import com.veterinaria.dtos.CompletarRegistroDTO;
 import com.veterinaria.dtos.SeleccionarRolRequestDTO;
-import com.veterinaria.servicios.AuthServicio;
-
 import jakarta.validation.Valid;
 
 @RestController
@@ -30,68 +28,70 @@ import jakarta.validation.Valid;
 public class AuthController {
 
     @Autowired
-    private AuthServicio authServicio;
+    private com.veterinaria.servicios.auth.AuthLoginServicio authLoginServicio;
 
-    @PostMapping("/registro") // AQUI: Endpoint específico
+    @Autowired
+    private com.veterinaria.servicios.auth.AuthRegistroServicio authRegistroServicio;
+
+    @Autowired
+    private com.veterinaria.servicios.auth.AuthGoogleServicio authGoogleServicio;
+
+    @PostMapping("/registro")
     public ResponseEntity<MensajeResponseDTO> registrarCliente(@Valid @RequestBody RegistroClienteDTO dto) {
-        MensajeResponseDTO respuesta = authServicio.registrarCliente(dto);
+        MensajeResponseDTO respuesta = authRegistroServicio.registrarCliente(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody LoginRequestDTO dto) {
-        AuthResponseDTO respuesta = authServicio.login(dto);
+        AuthResponseDTO respuesta = authLoginServicio.login(dto);
         return ResponseEntity.ok(respuesta);
     }
 
     @PostMapping("/google")
     public ResponseEntity<?> loginConGoogle(@Valid @RequestBody GoogleLoginRequestDTO dto) {
-        // Puede retornar AuthResponseDTO si el usuario existe,
-        // o un mapa con datos si falta completar registro.
-        Object respuesta = authServicio.loginConGoogle(dto);
+        Object respuesta = authGoogleServicio.loginConGoogle(dto);
         if (respuesta instanceof AuthResponseDTO) {
             return ResponseEntity.ok(respuesta);
         } else {
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body(respuesta); // 202 Accepted indica que falta paso
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(respuesta); 
         }
     }
 
     @PostMapping("/solicitar-registro-correo")
     public ResponseEntity<MensajeResponseDTO> solicitarRegistroCorreo(@Valid @RequestBody SolicitarRegistroCorreoDTO dto) {
-        MensajeResponseDTO respuesta = authServicio.solicitarRegistroCorreo(dto);
+        MensajeResponseDTO respuesta = authRegistroServicio.solicitarRegistroCorreo(dto);
         return ResponseEntity.ok(respuesta);
     }
 
     @PostMapping("/completar-registro")
     public ResponseEntity<AuthResponseDTO> completarRegistro(@Valid @RequestBody CompletarRegistroDTO dto) {
-        AuthResponseDTO respuesta = authServicio.completarRegistro(dto);
+        AuthResponseDTO respuesta = authRegistroServicio.completarRegistro(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
 
     @PostMapping("/cambiar-password")
     public ResponseEntity<MensajeResponseDTO> cambiarPassword(@Valid @RequestBody CambiarPasswordRequestDTO dto) {
-        // Extraemos el email del token JWT actual
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        MensajeResponseDTO respuesta = authServicio.cambiarPassword(email, dto);
+        MensajeResponseDTO respuesta = authLoginServicio.cambiarPassword(email, dto);
         return ResponseEntity.ok(respuesta);
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponseDTO> refresh(@Valid @RequestBody RefreshTokenRequestDTO dto) {
-        AuthResponseDTO respuesta = authServicio.refreshToken(dto.getRefreshToken());
+        AuthResponseDTO respuesta = authLoginServicio.refreshToken(dto.getRefreshToken());
         return ResponseEntity.ok(respuesta);
     }
 
     @PostMapping("/logout")
     public ResponseEntity<MensajeResponseDTO> logout(@Valid @RequestBody RefreshTokenRequestDTO dto) {
-        MensajeResponseDTO respuesta = authServicio.logout(dto.getRefreshToken());
+        MensajeResponseDTO respuesta = authLoginServicio.logout(dto.getRefreshToken());
         return ResponseEntity.ok(respuesta);
     }
 
     @PostMapping("/confirmar-token")
     public ResponseEntity<MensajeResponseDTO> confirmarToken(@Valid @RequestBody com.veterinaria.dtos.ConfirmarTokenRequestDTO dto) {
-        MensajeResponseDTO respuesta = authServicio.confirmarToken(dto.getToken(), dto.getPassword());
+        MensajeResponseDTO respuesta = authRegistroServicio.confirmarToken(dto.getToken(), dto.getPassword());
         return ResponseEntity.ok(respuesta);
     }
 
@@ -99,7 +99,7 @@ public class AuthController {
     public ResponseEntity<AuthResponseDTO> seleccionarRol(
             @Valid @RequestBody SeleccionarRolRequestDTO dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        AuthResponseDTO respuesta = authServicio.seleccionarRol(email, dto.getRol());
+        AuthResponseDTO respuesta = authLoginServicio.seleccionarRol(email, dto.getRol());
         return ResponseEntity.ok(respuesta);
     }
 }
