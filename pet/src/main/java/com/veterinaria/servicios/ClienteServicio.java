@@ -167,31 +167,32 @@ public class ClienteServicio {
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente no encontrado con ID:" + id));
 
         if (estado) {
-            // El admin acaba de darle click a "Activar". Se le envía el correo de confirmación
-            // y permanece inactivo hasta que responda al correo configurando su clave.
+            // El admin acaba de darle click a "Activar".
             clientedb.setActivo(false); 
-            if (clientedb.getUsuario() != null) {
-                clientedb.getUsuario().setActivo(false);
-            }
-            // Generar nuevo token y reenviar
-            String token = java.util.UUID.randomUUID().toString();
-            com.veterinaria.modelos.VerificationToken verificationToken = new com.veterinaria.modelos.VerificationToken(
-                    token, 
-                    clientedb, 
-                    java.time.LocalDateTime.now().plusDays(1)
-            );
-            tokenRepositorio.save(verificationToken);
-            if (clientedb.getUsuario() != null) {
+            // Si el usuario no tiene contraseña (nuevo), enviamos correo
+            if (clientedb.getUsuario() != null && clientedb.getUsuario().getPassword() == null) {
+                // Generar nuevo token y reenviar
+                String token = java.util.UUID.randomUUID().toString();
+                com.veterinaria.modelos.VerificationToken verificationToken = new com.veterinaria.modelos.VerificationToken(
+                        token, 
+                        clientedb, 
+                        java.time.LocalDateTime.now().plusDays(1)
+                );
+                tokenRepositorio.save(verificationToken);
                 String correo = clientedb.getUsuario().getEmail();
                 if (correo != null) {
                     emailServicio.enviarCorreoConfirmacion(correo, token);
                 }
+            } else {
+                clientedb.setActivo(true);
             }
         } else {
-            // Desactivar inmediatamente
+            // Desactivar inmediatamente el rol de cliente
             clientedb.setActivo(false);
-            if (clientedb.getUsuario() != null) {
+            // Solo desactivamos el LOGIN si NO es empleado
+            if (clientedb.getUsuario() != null && clientedb.getUsuario().getEmpleado() == null) {
                 clientedb.getUsuario().setActivo(false);
+                usuarioRepositorio.save(clientedb.getUsuario());
             }
         }
 

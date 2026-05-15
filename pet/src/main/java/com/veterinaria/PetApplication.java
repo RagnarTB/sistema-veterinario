@@ -14,9 +14,12 @@ import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.springframework.scheduling.annotation.EnableAsync;
+
 @EnableJpaAuditing // al arrancar la app se creara una tabla espejo llamada atenciones_medicas_AUD
 					// y registrara los cambios automaticamente
 @EnableScheduling
+@EnableAsync
 @SpringBootApplication
 public class PetApplication {
 

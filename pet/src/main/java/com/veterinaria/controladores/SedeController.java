@@ -14,7 +14,6 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/sedes")
-@PreAuthorize("hasRole('ADMIN')")
 public class SedeController {
 
     private final SedeServicio sedeServicio;
@@ -23,33 +22,45 @@ public class SedeController {
         this.sedeServicio = sedeServicio;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SedeResponseDTO guardar(@Valid @RequestBody SedeRequestDTO dto) {
         return sedeServicio.guardar(dto);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA', 'VETERINARIO')")
+    @GetMapping("/activas")
+    public java.util.List<SedeResponseDTO> listarActivas() {
+        return sedeServicio.listarActivas();
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA', 'VETERINARIO')")
     @GetMapping
     public Page<SedeResponseDTO> listarTodas(Pageable pageable) {
         return sedeServicio.listarTodas(pageable);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA', 'VETERINARIO')")
     @GetMapping("/{id}")
     public SedeResponseDTO buscarPorId(@PathVariable Long id) {
         return sedeServicio.buscarPorId(id);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public SedeResponseDTO actualizar(@PathVariable Long id, @Valid @RequestBody SedeRequestDTO dto) {
         return sedeServicio.actualizar(id, dto);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/estado")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cambiarEstado(@PathVariable Long id, @RequestParam Boolean estado) {
         sedeServicio.cambiarEstado(id, estado);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void eliminar(@PathVariable Long id) {

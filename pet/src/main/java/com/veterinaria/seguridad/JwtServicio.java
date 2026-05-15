@@ -49,8 +49,12 @@ public class JwtServicio {
         return extraerClaim(token, Claims::getSubject);
     }
 
-    private boolean esTokenExpirado(String token) {
+    public boolean esTokenExpirado(String token) {
         return extraerExpiracion(token).before(new Date());
+    }
+
+    public java.util.List<String> extraerRoles(String token) {
+        return extraerClaim(token, claims -> claims.get("roles", java.util.List.class));
     }
 
     private Date extraerExpiracion(String token) {

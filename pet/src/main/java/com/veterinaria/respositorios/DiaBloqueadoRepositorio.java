@@ -11,6 +11,6 @@ public interface DiaBloqueadoRepositorio extends JpaRepository<DiaBloqueado, Lon
     // Verificamos si la clínica entera cierra (veterinario IS NULL) o si ese doctor
     // en específico no atiende hoy
     @Query("SELECT CASE WHEN COUNT(d) > 0 THEN true ELSE false END FROM DiaBloqueado d " +
-            "WHERE d.fecha = :fecha AND (d.veterinario IS NULL OR d.veterinario.id = :veterinarioId)")
+            "WHERE :fecha BETWEEN d.fecha AND COALESCE(d.fechaFin, d.fecha) AND (d.veterinario IS NULL OR d.veterinario.id = :veterinarioId)")
     boolean estaBloqueadoElDia(@Param("fecha") LocalDate fecha, @Param("veterinarioId") Long veterinarioId);
 }

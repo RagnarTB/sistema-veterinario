@@ -13,6 +13,7 @@ public class AuthResponseDTO {
     private String refreshToken;
     private String email;
     private List<String> roles; // ROLE_ADMIN, ROLE_VETERINARIO, etc.
+    private List<Long> sedeIds; // Sedes asignadas al empleado
     private boolean requiresRoleSelection;
 
     public AuthResponseDTO(String token, String refreshToken, String email, List<String> roles) {
@@ -23,11 +24,29 @@ public class AuthResponseDTO {
         this.requiresRoleSelection = false;
     }
 
+    public AuthResponseDTO(String token, String refreshToken, String email, List<String> roles, List<Long> sedeIds) {
+        this.token = token;
+        this.refreshToken = refreshToken;
+        this.email = email;
+        this.roles = roles;
+        this.sedeIds = sedeIds;
+        this.requiresRoleSelection = false;
+    }
+
     public AuthResponseDTO(String token, String refreshToken, String email, List<String> roles, boolean requiresRoleSelection) {
         this.token = token;
         this.refreshToken = refreshToken;
         this.email = email;
         this.roles = roles;
+        this.requiresRoleSelection = requiresRoleSelection;
+    }
+
+    public AuthResponseDTO(String token, String refreshToken, String email, List<String> roles, List<Long> sedeIds, boolean requiresRoleSelection) {
+        this.token = token;
+        this.refreshToken = refreshToken;
+        this.email = email;
+        this.roles = roles;
+        this.sedeIds = sedeIds;
         this.requiresRoleSelection = requiresRoleSelection;
     }
 }

@@ -9,5 +9,6 @@ import com.veterinaria.modelos.Rol;
 public interface RolRespositorio extends JpaRepository<Rol, Long> {
 
     Optional<Rol> findByNombre(String nombre);
+    boolean existsByNombreIgnoreCase(String nombre);
 
 }

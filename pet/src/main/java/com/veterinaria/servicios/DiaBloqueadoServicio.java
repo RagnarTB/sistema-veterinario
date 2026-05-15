@@ -35,21 +35,25 @@ public class DiaBloqueadoServicio {
         List<EstadoCita> estadosPendientes = Arrays.asList(EstadoCita.AGENDADA, EstadoCita.CONFIRMADA);
         boolean tieneCitas;
 
+        java.time.LocalDate fechaFinCalc = dto.getFechaFin() != null ? dto.getFechaFin() : dto.getFecha();
+
         // Diferenciamos si es bloqueo de un doctor o de toda la clínica
         if (dto.getVeterinarioId() != null) {
-            tieneCitas = citaRepositorio.existenCitasPendientesPorVeterinarioYFecha(
-                    dto.getVeterinarioId(), dto.getFecha(), estadosPendientes);
+            tieneCitas = citaRepositorio.existenCitasPendientesPorVeterinarioYRangoFechas(
+                    dto.getVeterinarioId(), dto.getFecha(), fechaFinCalc, estadosPendientes);
         } else {
-            tieneCitas = citaRepositorio.existenCitasPendientesPorFecha(dto.getFecha(), estadosPendientes);
+            tieneCitas = citaRepositorio.existenCitasPendientesPorRangoFechas(dto.getFecha(), fechaFinCalc, estadosPendientes);
         }
 
         if (tieneCitas) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "No se puede bloquear el día. Existen citas agendadas o confirmadas para esta fecha. Reprograme a los pacientes primero.");
+                    "No se puede bloquear el día o rango. Existen citas agendadas o confirmadas en esas fechas. Reprograme a los pacientes primero.");
         }
 
         DiaBloqueado diaBloqueado = new DiaBloqueado();
         diaBloqueado.setFecha(dto.getFecha());
+        diaBloqueado.setFechaFin(dto.getFechaFin());
+        diaBloqueado.setTipo(dto.getTipo());
         diaBloqueado.setMotivo(dto.getMotivo());
 
         if (dto.getVeterinarioId() != null) {
@@ -76,6 +80,6 @@ public class DiaBloqueadoServicio {
 
     private DiaBloqueadoResponseDTO mapearAResponse(DiaBloqueado d) {
         Long vetId = (d.getVeterinario() != null) ? d.getVeterinario().getId() : null;
-        return new DiaBloqueadoResponseDTO(d.getId(), d.getFecha(), d.getMotivo(), vetId);
+        return new DiaBloqueadoResponseDTO(d.getId(), d.getFecha(), d.getFechaFin(), d.getTipo(), d.getMotivo(), vetId);
     }
 }

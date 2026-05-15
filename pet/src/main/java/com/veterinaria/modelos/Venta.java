@@ -16,6 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.FetchType;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -41,7 +42,7 @@ public class Venta {
     // Cliente no es @Audited, por eso se declara NOT_AUDITED para evitar
     // EnversMappingException al arrancar el contexto
     @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cliente_id")
     private Cliente cliente;
 
@@ -55,7 +56,7 @@ public class Venta {
     // CajaDiaria no es @Audited, se declara NOT_AUDITED para evitar
     // EnversMappingException al arrancar el contexto
     @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "caja_id")
     private CajaDiaria caja;
 

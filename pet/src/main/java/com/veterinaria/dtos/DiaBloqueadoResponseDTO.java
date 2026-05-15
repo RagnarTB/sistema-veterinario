@@ -12,6 +12,8 @@ import lombok.NoArgsConstructor;
 public class DiaBloqueadoResponseDTO {
     private Long id;
     private LocalDate fecha;
+    private LocalDate fechaFin;
+    private String tipo;
     private String motivo;
     private Long veterinarioId; // Será null si es un feriado general
 }

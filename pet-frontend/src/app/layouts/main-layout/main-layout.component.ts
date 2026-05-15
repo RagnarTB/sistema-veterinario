@@ -146,6 +146,25 @@ interface NavGroup {
                 <span class="material-icons-round">lock</span>
                 <span>Cambiar contraseña</span>
               </button>
+
+              @if (authService.currentRoles().length > 1) {
+                <mat-menu #roleMenu="matMenu">
+                  @for (rol of authService.currentRoles(); track rol) {
+                    <button mat-menu-item (click)="cambiarRol(rol)" [disabled]="rol === authService.activeRole()">
+                      <span class="material-icons-round" [style.color]="rol === authService.activeRole() ? '#10b981' : ''">
+                        {{ rol === authService.activeRole() ? 'check_circle' : 'radio_button_unchecked' }}
+                      </span>
+                      <span>{{ getRoleName(rol) }}</span>
+                    </button>
+                  }
+                </mat-menu>
+
+                <button mat-menu-item [matMenuTriggerFor]="roleMenu">
+                  <span class="material-icons-round">swap_horiz</span>
+                  <span>Cambiar de Rol</span>
+                </button>
+              }
+
               <mat-divider />
               <button mat-menu-item (click)="logout()" class="logout-item">
                 <span class="material-icons-round">logout</span>
@@ -657,12 +676,42 @@ export class MainLayoutComponent {
   }
 
   getRolLabel(): string {
+    const active = this.authService.activeRole();
+    if (active) return this.getRoleName(active);
+    // fallback
     const roles = this.authService.currentRoles();
     if (roles.includes('ROLE_ADMIN')) return 'Administrador';
     if (roles.includes('ROLE_VETERINARIO')) return 'Veterinario';
     if (roles.includes('ROLE_RECEPCIONISTA')) return 'Recepcionista';
     if (roles.includes('ROLE_CLIENTE')) return 'Cliente';
     return '';
+  }
+
+  getRoleName(rol: string): string {
+    const names: Record<string, string> = {
+      'ROLE_ADMIN': 'Administrador',
+      'ROLE_CLIENTE': 'Cliente',
+      'ROLE_VETERINARIO': 'Veterinario',
+      'ROLE_RECEPCIONISTA': 'Recepcionista'
+    };
+    return names[rol] || rol.replace('ROLE_', '');
+  }
+
+  cambiarRol(rol: string) {
+    // Si ya estamos en el rol, no hacer nada
+    if (rol === this.authService.activeRole()) return;
+    
+    // Llamar al backend para regenerar el token
+    this.authService.seleccionarRol(rol).subscribe({
+      next: () => {
+        this.authService.setActiveRole(rol as RolNombre);
+        // Recargar la aplicación para aplicar todos los guards y vistas nuevas
+        window.location.href = '/app';
+      },
+      error: () => {
+        alert('Error al cambiar de rol');
+      }
+    });
   }
 
   @HostListener('window:resize')

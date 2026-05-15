@@ -3,18 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
-export interface DiaBloqueadoRequest {
-  fecha: string;
-  motivo: string;
-  veterinarioId?: number;
-}
-
-export interface DiaBloqueadoResponse {
-  id: number;
-  fecha: string;
-  motivo: string;
-  veterinarioId?: number;
-}
+import { DiaBloqueadoRequest, DiaBloqueadoResponse } from '../models/models';
 
 @Injectable({ providedIn: 'root' })
 export class DiaBloqueadoService {

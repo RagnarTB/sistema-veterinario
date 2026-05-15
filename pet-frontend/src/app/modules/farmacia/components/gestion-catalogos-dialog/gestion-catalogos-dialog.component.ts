@@ -1,15 +1,16 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
+import { MatDialogRef, MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../../services/catalogo.service';
+import { ModalConfirmacionComponent } from '../../../../shared/components/modal-confirmacion/modal-confirmacion.component';
 
 @Component({
   selector: 'app-gestion-catalogos-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, MatTabsModule],
+  imports: [CommonModule, FormsModule, MatDialogModule, MatTabsModule, ModalConfirmacionComponent],
   template: `
     <div class="dialog-container">
       <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -22,7 +23,7 @@ import { CatalogoService, CategoriaProducto, UnidadMedida, Proveedor } from '../
         </button>
       </div>
 
-      <div class="dialog-content" style="padding: 0 !important;">
+      <div class="dialog-content" style="padding: 0 !important; max-height: 80vh; overflow-y: auto;">
         <mat-tab-group animationDuration="200ms">
 
           <!-- ===== CATEGORÍAS ===== -->
@@ -345,6 +346,7 @@ export class GestionCatalogosDialogComponent implements OnInit {
 
   constructor(
     public dialogRef: MatDialogRef<GestionCatalogosDialogComponent>,
+    private dialog: MatDialog,
     private catalogoService: CatalogoService,
     private snackBar: MatSnackBar
   ) {}
@@ -395,11 +397,27 @@ export class GestionCatalogosDialogComponent implements OnInit {
   }
 
   eliminarCat(cat: CategoriaProducto) {
-    this.catalogoService.eliminarCategoria(cat.id).subscribe({
-      next: (res) => { this.cargar(); this.msg(res.mensaje); },
-      error: (err) => {
-        const errorMsg = err?.error?.message || 'Error al eliminar';
-        this.msg(errorMsg);
+    const dialogRef = this.dialog.open(ModalConfirmacionComponent, {
+      width: '400px',
+      data: {
+        title: cat.activo ? 'Desactivar Categoría' : 'Eliminar Permanentemente',
+        message: cat.activo 
+          ? `¿Está seguro de desactivar la categoría "${cat.nombre}"?` 
+          : `¿Está seguro de ELIMINAR PERMANENTEMENTE la categoría "${cat.nombre}"? Esta acción no se puede deshacer.`,
+        confirmText: cat.activo ? 'Desactivar' : 'Eliminar',
+        isDestructive: true
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.catalogoService.eliminarCategoria(cat.id).subscribe({
+          next: (res) => { this.cargar(); this.msg(res.mensaje); },
+          error: (err) => {
+            const errorMsg = err?.error?.message || 'Error al eliminar';
+            this.msg(errorMsg);
+          }
+        });
       }
     });
   }
@@ -445,11 +463,27 @@ export class GestionCatalogosDialogComponent implements OnInit {
   }
 
   eliminarUni(uni: UnidadMedida) {
-    this.catalogoService.eliminarUnidad(uni.id).subscribe({
-      next: (res) => { this.cargar(); this.msg(res.mensaje); },
-      error: (err) => {
-        const errorMsg = err?.error?.message || 'Error al eliminar';
-        this.msg(errorMsg);
+    const dialogRef = this.dialog.open(ModalConfirmacionComponent, {
+      width: '400px',
+      data: {
+        title: uni.activo ? 'Desactivar Unidad' : 'Eliminar Permanentemente',
+        message: uni.activo 
+          ? `¿Está seguro de desactivar la unidad "${uni.nombre}"?` 
+          : `¿Está seguro de ELIMINAR PERMANENTEMENTE la unidad "${uni.nombre}"? Esta acción no se puede deshacer.`,
+        confirmText: uni.activo ? 'Desactivar' : 'Eliminar',
+        isDestructive: true
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.catalogoService.eliminarUnidad(uni.id).subscribe({
+          next: (res) => { this.cargar(); this.msg(res.mensaje); },
+          error: (err) => {
+            const errorMsg = err?.error?.message || 'Error al eliminar';
+            this.msg(errorMsg);
+          }
+        });
       }
     });
   }
@@ -513,11 +547,27 @@ export class GestionCatalogosDialogComponent implements OnInit {
   }
 
   eliminarProv(prov: Proveedor) {
-    this.catalogoService.eliminarProveedor(prov.id).subscribe({
-      next: (res) => { this.cargar(); this.msg(res.mensaje); },
-      error: (err) => {
-        const errorMsg = err?.error?.message || 'Error al eliminar';
-        this.msg(errorMsg);
+    const dialogRef = this.dialog.open(ModalConfirmacionComponent, {
+      width: '400px',
+      data: {
+        title: prov.activo ? 'Desactivar Proveedor' : 'Eliminar Permanentemente',
+        message: prov.activo 
+          ? `¿Está seguro de desactivar al proveedor "${prov.razonSocial}"?` 
+          : `¿Está seguro de ELIMINAR PERMANENTEMENTE al proveedor "${prov.razonSocial}"? Esta acción no se puede deshacer.`,
+        confirmText: prov.activo ? 'Desactivar' : 'Eliminar',
+        isDestructive: true
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.catalogoService.eliminarProveedor(prov.id).subscribe({
+          next: (res) => { this.cargar(); this.msg(res.mensaje); },
+          error: (err) => {
+            const errorMsg = err?.error?.message || 'Error al eliminar';
+            this.msg(errorMsg);
+          }
+        });
       }
     });
   }

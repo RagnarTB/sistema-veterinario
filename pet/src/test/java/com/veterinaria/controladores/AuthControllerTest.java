@@ -10,7 +10,9 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.veterinaria.servicios.AuthServicio;
+import com.veterinaria.servicios.auth.AuthLoginServicio;
+import com.veterinaria.servicios.auth.AuthRegistroServicio;
+import com.veterinaria.servicios.auth.AuthGoogleServicio;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -23,7 +25,13 @@ class AuthControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private AuthServicio authServicio;
+    private AuthLoginServicio authLoginServicio;
+
+    @MockBean
+    private AuthRegistroServicio authRegistroServicio;
+
+    @MockBean
+    private AuthGoogleServicio authGoogleServicio;
 
     @Test
     void debeRegistrarClienteYRetornarCreated() throws Exception {

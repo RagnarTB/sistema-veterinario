@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.veterinaria.excepciones.ResourceNotFoundException;
+import com.veterinaria.excepciones.BusinessLogicException;
 
 import com.veterinaria.dtos.CitaRequestDTO;
 import com.veterinaria.dtos.CitaResponseDTO;
@@ -63,27 +65,23 @@ public class CitaServicio {
         public CitaResponseDTO guardar(CitaRequestDTO dto) {
                 validarFechaHoraNoPasado(dto.getFecha(), dto.getHoraInicio());
                 ServicioMedico servicio = servicioRepositorio.findById(dto.getServicioId())
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Servicio no encontrado"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Servicio no encontrado"));
 
                 Empleado veterinario = empleadoRepositorio.findById(dto.getVeterinarioId())
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Veterinario no encontrado"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Veterinario no encontrado"));
 
                 Sede sede = sedeRepositorio.findById(dto.getSedeId())
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Sede no encontrada"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Sede no encontrada"));
 
                 List<Paciente> pacientes = pacienteRepositorio.findAllById(dto.getPacienteIds());
                 if (pacientes.isEmpty()) {
-                        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontraron los pacientes");
+                        throw new ResourceNotFoundException("No se encontraron los pacientes");
                 }
 
                 // Validación: todos los pacientes deben pertenecer al mismo cliente
                 Cliente clienteBase = pacientes.get(0).getCliente();
                 if (pacientes.stream().anyMatch(p -> !p.getCliente().equals(clienteBase))) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                                        "Todos los pacientes de la cita deben pertenecer al mismo cliente. No se permiten mascotas de distintos dueños en una misma cita.");
+                        throw new BusinessLogicException("Todos los pacientes de la cita deben pertenecer al mismo cliente. No se permiten mascotas de distintos dueños en una misma cita.");
                 }
 
                 int cantidadMascotas = dto.getPacienteIds().size();
@@ -104,8 +102,7 @@ public class CitaServicio {
                                 ESTADOS_IGNORADOS);
 
                 if (existeCruce) {
-                        throw new ResponseStatusException(HttpStatus.CONFLICT,
-                                        "El veterinario ya tiene una cita ocupando este horario.");
+                        throw new BusinessLogicException("El veterinario ya tiene una cita ocupando este horario.");
                 }
 
                 Cita cita = new Cita();
@@ -136,38 +133,32 @@ public class CitaServicio {
         public CitaResponseDTO buscarPorId(Long id) {
                 return citaRepositorio.findById(id)
                                 .map(this::mapearAResponse)
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Cita no encontrada con ID: " + id));
+                                .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada con ID: " + id));
         }
 
         @Transactional
         public CitaResponseDTO actualizar(Long id, CitaRequestDTO dto) {
                 validarFechaHoraNoPasado(dto.getFecha(), dto.getHoraInicio());
                 Cita citaDb = citaRepositorio.findById(id)
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Cita no encontrada con ID: " + id));
+                                .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada con ID: " + id));
 
                 ServicioMedico servicio = servicioRepositorio.findById(dto.getServicioId())
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Servicio no encontrado"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Servicio no encontrado"));
 
                 Empleado veterinario = empleadoRepositorio.findById(dto.getVeterinarioId())
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Veterinario no encontrado"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Veterinario no encontrado"));
 
                 Sede sede = sedeRepositorio.findById(dto.getSedeId())
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Sede no encontrada"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Sede no encontrada"));
 
                 List<Paciente> pacientes = pacienteRepositorio.findAllById(dto.getPacienteIds());
                 if (pacientes.isEmpty()) {
-                        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontraron los pacientes");
+                        throw new ResourceNotFoundException("No se encontraron los pacientes");
                 }
 
                 Cliente clienteBase = pacientes.get(0).getCliente();
                 if (pacientes.stream().anyMatch(p -> !p.getCliente().equals(clienteBase))) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                                        "Todos los pacientes de la cita deben pertenecer al mismo cliente.");
+                        throw new BusinessLogicException("Todos los pacientes de la cita deben pertenecer al mismo cliente.");
                 }
 
                 // Recalculamos tiempos por si cambió de servicio (ej. de Consulta a Cirugía)
@@ -189,8 +180,7 @@ public class CitaServicio {
                                 ESTADOS_IGNORADOS);
 
                 if (existeCruce) {
-                        throw new ResponseStatusException(HttpStatus.CONFLICT,
-                                        "No se puede reprogramar: El veterinario ya tiene otro compromiso en ese horario.");
+                        throw new BusinessLogicException("No se puede reprogramar: El veterinario ya tiene otro compromiso en ese horario.");
                 }
 
                 citaDb.setFecha(dto.getFecha());
@@ -209,13 +199,11 @@ public class CitaServicio {
         @Transactional
         public void eliminar(Long id) {
                 Cita citaDb = citaRepositorio.findById(id)
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Cita no encontrada con ID: " + id));
+                                .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada con ID: " + id));
 
                 // solo se puede borrar si está AGENDADA
                 if (citaDb.getEstado() != EstadoCita.AGENDADA) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                                        "No se puede eliminar una cita que ya fue " + citaDb.getEstado()
+                        throw new BusinessLogicException("No se puede eliminar una cita que ya fue " + citaDb.getEstado()
                                                         + ". Estado actual: " + citaDb.getEstado());
                 }
 
@@ -246,7 +234,7 @@ public class CitaServicio {
                         Long sedeId, int cantidadPacientes) {
 
                 if (cantidadPacientes < 1) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "cantidadPacientes debe ser >= 1");
+                        throw new BusinessLogicException("cantidadPacientes debe ser >= 1");
                 }
 
                 // 1. Si el día es feriado o el doctor pidió permiso, devolvemos lista vacía
@@ -267,8 +255,7 @@ public class CitaServicio {
 
                 // 3. Calculamos cuánto dura la atención completa
                 ServicioMedico servicio = servicioRepositorio.findById(servicioId)
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Servicio no encontrado"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Servicio no encontrado"));
                 int duracionPorPaciente = servicio.getDuracionMinutos() + servicio.getBufferMinutos();
                 int duracionTotal = duracionPorPaciente * cantidadPacientes;
 
@@ -323,8 +310,7 @@ public class CitaServicio {
         @Transactional
         public void cambiarEstado(Long id, EstadoCita nuevoEstado) {
                 Cita citaDb = citaRepositorio.findById(id)
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Cita no encontrada con ID: " + id));
+                                .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada con ID: " + id));
 
                 validarTransicionEstado(citaDb.getEstado(), nuevoEstado);
                 citaDb.setEstado(nuevoEstado);
@@ -338,39 +324,20 @@ public class CitaServicio {
                 }
 
                 if (fecha.isBefore(LocalDate.now())) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se permiten citas en el pasado");
+                        throw new BusinessLogicException("No se permiten citas en el pasado");
                 }
                 if (fecha.equals(LocalDate.now()) && horaInicio.isBefore(LocalTime.now().withSecond(0).withNano(0))) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se permiten citas en el pasado");
+                        throw new BusinessLogicException("No se permiten citas en el pasado");
                 }
         }
 
         private static void validarTransicionEstado(EstadoCita actual, EstadoCita nuevo) {
                 if (actual == null || nuevo == null) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estado inválido");
+                        throw new BusinessLogicException("Estado inválido");
                 }
 
-                // Estados terminales: no se permiten cambios
-                if (Set.of(EstadoCita.CANCELADA, EstadoCita.NO_ASISTIO, EstadoCita.COMPLETADA).contains(actual)) {
-                        throw new ResponseStatusException(HttpStatus.CONFLICT,
-                                "No se puede cambiar el estado desde " + actual);
-                }
-
-                boolean permitido = switch (actual) {
-                        case AGENDADA -> Set.of(EstadoCita.CONFIRMADA, EstadoCita.EN_SALA_ESPERA, EstadoCita.CANCELADA,
-                                EstadoCita.NO_ASISTIO).contains(nuevo);
-                        case CONFIRMADA -> Set.of(EstadoCita.EN_SALA_ESPERA, EstadoCita.CANCELADA, EstadoCita.NO_ASISTIO)
-                                .contains(nuevo);
-                        case EN_SALA_ESPERA ->
-                                Set.of(EstadoCita.EN_CONSULTORIO, EstadoCita.CANCELADA, EstadoCita.NO_ASISTIO)
-                                        .contains(nuevo);
-                        case EN_CONSULTORIO -> Set.of(EstadoCita.COMPLETADA).contains(nuevo);
-                        default -> false;
-                };
-
-                if (!permitido) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                                "Transición de estado inválida: " + actual + " -> " + nuevo);
+                if (!actual.puedeTransitarA(nuevo)) {
+                        throw new BusinessLogicException("Transición de estado inválida: " + actual + " -> " + nuevo);
                 }
         }
 }

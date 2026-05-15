@@ -16,7 +16,7 @@ import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/materia
         </h2>
       </div>
 
-      <div class="dialog-content" style="padding: 1.5rem;">
+      <div class="dialog-content" style="padding: 1.5rem; max-height: 80vh; overflow-y: auto;">
         <div style="margin-bottom: 1.25rem;">
           <p class="text-xs" style="color: var(--text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Producto</p>
           <p class="font-medium" style="color: var(--text-primary); margin: 0;">{{ data.productoNombre }}</p>

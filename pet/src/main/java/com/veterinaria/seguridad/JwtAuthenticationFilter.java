@@ -59,23 +59,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 3. Si hay email en el token y el usuario aún no está autenticado en este hilo
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-
-            // 4. Validar que el token sea correcto
-            boolean tokenValido;
             try {
-                tokenValido = jwtServicio.esTokenValido(jwt, userDetails);
-            } catch (JwtException | IllegalArgumentException ex) {
-                tokenValido = false;
-            }
+                // 4. Extraer roles del token sin tocar la BD
+                java.util.List<String> rolesStr = jwtServicio.extraerRoles(jwt);
+                
+                java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities = 
+                    rolesStr != null ? rolesStr.stream()
+                        .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
+                        .toList() : java.util.Collections.emptyList();
 
-            if (tokenValido) {
-                // 5. Autenticar manualmente al usuario en Spring Security
+                // 5. Autenticar usando los datos del JWT
+                org.springframework.security.core.userdetails.User principal = 
+                    new org.springframework.security.core.userdetails.User(userEmail, "", authorities);
+
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
+                        principal, null, authorities);
 
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+            } catch (Exception ex) {
+                // Token parse failed for roles, ignore and continue chain
             }
         }
 

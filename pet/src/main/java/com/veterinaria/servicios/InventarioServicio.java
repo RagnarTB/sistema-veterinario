@@ -4,6 +4,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.veterinaria.excepciones.ResourceNotFoundException;
+import com.veterinaria.excepciones.BusinessLogicException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +31,7 @@ import com.veterinaria.respositorios.ProductoRepositorio;
 import com.veterinaria.respositorios.ProveedorRepositorio;
 import com.veterinaria.respositorios.SedeRepositorio;
 import com.veterinaria.respositorios.EmpleadoRepositorio;
+import com.veterinaria.servicios.estrategias.DescuentoStockStrategy;
 
 @Service
 public class InventarioServicio {
@@ -40,6 +43,7 @@ public class InventarioServicio {
     private final MovimientoInventarioRepositorio movimientoRepositorio;
     private final ProveedorRepositorio proveedorRepositorio;
     private final EmpleadoRepositorio empleadoRepositorio;
+    private final DescuentoStockStrategy descuentoStockStrategy;
 
     public InventarioServicio(
             InventarioSedeRepositorio inventarioSedeRepositorio, 
@@ -48,7 +52,8 @@ public class InventarioServicio {
             LoteInventarioRepositorio loteRepositorio,
             MovimientoInventarioRepositorio movimientoRepositorio,
             ProveedorRepositorio proveedorRepositorio,
-            EmpleadoRepositorio empleadoRepositorio) {
+            EmpleadoRepositorio empleadoRepositorio,
+            DescuentoStockStrategy descuentoStockStrategy) {
         this.inventarioSedeRepositorio = inventarioSedeRepositorio;
         this.productoRepositorio = productoRepositorio;
         this.sedeRepositorio = sedeRepositorio;
@@ -56,14 +61,15 @@ public class InventarioServicio {
         this.movimientoRepositorio = movimientoRepositorio;
         this.proveedorRepositorio = proveedorRepositorio;
         this.empleadoRepositorio = empleadoRepositorio;
+        this.descuentoStockStrategy = descuentoStockStrategy;
     }
 
     @Transactional
     public InventarioSede actualizarInventario(InventarioRequestDTO dto) {
         Producto producto = productoRepositorio.findById(dto.getProductoId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado"));
         Sede sede = sedeRepositorio.findById(dto.getSedeId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Sede no encontrada"));
 
         InventarioSede inventario = inventarioSedeRepositorio.findByProductoIdAndSedeId(dto.getProductoId(), dto.getSedeId())
                 .orElse(new InventarioSede());
@@ -79,17 +85,17 @@ public class InventarioServicio {
     @Transactional
     public void registrarIngreso(IngresoStockDTO dto, String emailResponsable) {
         Producto producto = productoRepositorio.findById(dto.getProductoId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado"));
         
         // Validación de decimales según unidad de compra
         if (producto.getUnidadCompra() != null && !Boolean.TRUE.equals(producto.getUnidadCompra().getPermiteDecimales())) {
             if (dto.getCantidadComprada().remainder(java.math.BigDecimal.ONE).compareTo(java.math.BigDecimal.ZERO) != 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La unidad " + producto.getUnidadCompra().getNombre() + " no permite valores decimales.");
+                throw new BusinessLogicException("La unidad " + producto.getUnidadCompra().getNombre() + " no permite valores decimales.");
             }
         }
 
         Sede sede = sedeRepositorio.findById(dto.getSedeId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Sede no encontrada"));
         
         Proveedor proveedor = null;
         if (dto.getProveedorId() != null) {
@@ -178,9 +184,9 @@ public class InventarioServicio {
     @Transactional
     public void registrarSalidaAjuste(SalidaStockDTO dto, String emailResponsable) {
         Producto producto = productoRepositorio.findById(dto.getProductoId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado"));
         Sede sede = sedeRepositorio.findById(dto.getSedeId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Sede no encontrada"));
 
         Empleado responsable = empleadoRepositorio.findByUsuarioEmail(emailResponsable).orElse(null);
 
@@ -189,7 +195,7 @@ public class InventarioServicio {
         // Validación de decimales según unidad de venta
         if (producto.getUnidadVenta() != null && !Boolean.TRUE.equals(producto.getUnidadVenta().getPermiteDecimales())) {
             if (dto.getCantidad().remainder(java.math.BigDecimal.ONE).compareTo(java.math.BigDecimal.ZERO) != 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La unidad " + producto.getUnidadVenta().getNombre() + " no permite valores decimales.");
+                throw new BusinessLogicException("La unidad " + producto.getUnidadVenta().getNombre() + " no permite valores decimales.");
             }
         }
 
@@ -210,26 +216,12 @@ public class InventarioServicio {
 
         if (esSalida) {
             if (inventario.getStockActual().compareTo(dto.getCantidad()) < 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock insuficiente para esta salida.");
+                throw new BusinessLogicException("Stock insuficiente para esta salida.");
             }
             inventario.setStockActual(inventario.getStockActual().subtract(dto.getCantidad()));
 
-            // Descontar FIFO de lotes
-            List<LoteInventario> lotes = loteRepositorio.findLotesParaFIFO(producto.getId(), sede.getId());
-            BigDecimal restante = dto.getCantidad();
-            for (LoteInventario lote : lotes) {
-                if (restante.compareTo(BigDecimal.ZERO) <= 0) break;
-                BigDecimal disponible = lote.getStockRestante();
-                if (disponible.compareTo(restante) >= 0) {
-                    lote.setStockRestante(disponible.subtract(restante));
-                    restante = BigDecimal.ZERO;
-                } else {
-                    restante = restante.subtract(disponible);
-                    lote.setStockRestante(BigDecimal.ZERO);
-                    lote.setActivo(false);
-                }
-                loteRepositorio.save(lote);
-            }
+            // Descontar FIFO de lotes usando el patrón Strategy
+            descuentoStockStrategy.descontar(producto, sede, dto.getCantidad());
         } else {
             // Ajuste positivo
             inventario.setStockActual(inventario.getStockActual().add(dto.getCantidad()));
@@ -250,7 +242,18 @@ public class InventarioServicio {
     @Transactional
     public void actualizarLote(Long loteId, LoteEditDTO dto, String emailResponsable) {
         LoteInventario lote = loteRepositorio.findById(loteId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lote no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lote no encontrado"));
+
+        boolean numeroLoteIgual = (lote.getNumeroLote() == null && dto.getNumeroLote() == null) || 
+                                  (lote.getNumeroLote() != null && lote.getNumeroLote().equals(dto.getNumeroLote()));
+        boolean fechaIgual = (lote.getFechaVencimiento() == null && dto.getFechaVencimiento() == null) || 
+                             (lote.getFechaVencimiento() != null && lote.getFechaVencimiento().equals(dto.getFechaVencimiento()));
+        boolean proveedorIgual = (lote.getProveedor() == null && dto.getProveedorId() == null) || 
+                                 (lote.getProveedor() != null && lote.getProveedor().getId().equals(dto.getProveedorId()));
+
+        if (numeroLoteIgual && fechaIgual && proveedorIgual) {
+            throw new BusinessLogicException("No ha modificado ningún dato. Cancele la edición.");
+        }
 
         Empleado responsable = empleadoRepositorio.findByUsuarioEmail(emailResponsable).orElse(null);
 
@@ -279,9 +282,9 @@ public class InventarioServicio {
                 .orElseGet(() -> {
                     InventarioSede nuevo = new InventarioSede();
                     nuevo.setProducto(productoRepositorio.findById(productoId)
-                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado")));
+                            .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado")));
                     nuevo.setSede(sedeRepositorio.findById(sedeId)
-                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sede no encontrada")));
+                            .orElseThrow(() -> new ResourceNotFoundException("Sede no encontrada")));
                     nuevo.setStockActual(BigDecimal.ZERO);
                     return nuevo;
                 });

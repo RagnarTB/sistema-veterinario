@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.HashSet;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.FetchType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -40,7 +41,7 @@ public class Empleado {
     @Column(nullable = false)
     private Boolean activo = true;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "empleado_sedes",
         joinColumns = @JoinColumn(name = "empleado_id"),
@@ -49,7 +50,7 @@ public class Empleado {
     private Set<Sede> sedes = new HashSet<>();
 
     // Relación OneToOne con la cuenta de autenticación
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", referencedColumnName = "id")
     private Usuario usuario;
 }

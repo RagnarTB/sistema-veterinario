@@ -176,12 +176,12 @@ public class EmpleadoServicio {
         return mapearAResponse(empleadoGuardado);
     }
 
-    public Page<EmpleadoResponseDTO> listarTodos(String buscar, Boolean estado, Pageable pageable) {
+    public Page<EmpleadoResponseDTO> listarTodos(String buscar, Boolean estado, Long sedeId, Pageable pageable) {
         Page<Empleado> pagina;
         if (buscar != null && !buscar.trim().isEmpty()) {
-            pagina = empleadoRepositorio.buscarEmpleadosConRoles(buscar, estado, pageable);
+            pagina = empleadoRepositorio.buscarEmpleadosConRoles(buscar, estado, sedeId, pageable);
         } else {
-            pagina = empleadoRepositorio.findAllConRoles(estado, pageable);
+            pagina = empleadoRepositorio.findAllConRoles(estado, sedeId, pageable);
         }
         return pagina.map(this::mapearAResponse);
     }
@@ -302,8 +302,8 @@ public class EmpleadoServicio {
 
         if (estado) {
             // El admin acaba de darle click a "Activar"
-            if (!usuario.getActivo() && usuario.getPassword() != null && usuario.getEmpleado() != null && usuario.getCliente() == null) {
-                // Generar nuevo token y reenviar si la contraseña era la dummy
+            if (!usuario.getActivo() && usuario.getPassword() == null) {
+                // Generar nuevo token y reenviar
                 String tokenStr = java.util.UUID.randomUUID().toString();
                 VerificationToken verificationToken = new VerificationToken(
                         tokenStr, 
@@ -312,22 +312,19 @@ public class EmpleadoServicio {
                 );
                 tokenRepositorio.save(verificationToken);
                 emailServicio.enviarCorreoConfirmacion(usuario.getEmail(), tokenStr);
-                // Permanece inactivo hasta que configure la contraseña
                 empleado.setActivo(false);
             } else {
                 empleado.setActivo(true);
             }
         } else {
             empleado.setActivo(false);
+            // Solo desactivamos el LOGIN si NO es cliente
+            if (usuario != null && usuario.getCliente() == null) {
+                usuario.setActivo(false);
+                usuarioRepositorio.save(usuario);
+            }
         }
         empleadoRepositorio.save(empleado);
-        
-        // Bloquear usuario solo si no es cliente. Opcion B recomendada: 
-        // Si el empleado se desactiva pero es cliente, NO bloqueamos la cuenta.
-        if (usuario != null && usuario.getCliente() == null) {
-            usuario.setActivo(estado);
-            usuarioRepositorio.save(usuario);
-        }
     }
 
     private EmpleadoResponseDTO mapearAResponse(Empleado empleado) {

@@ -21,7 +21,7 @@ import { InventarioService } from '../../services/inventario.service';
         </button>
       </div>
 
-      <div class="dialog-content" style="padding: 1.5rem;">
+      <div class="dialog-content" style="padding: 1.5rem; max-height: 70vh; overflow-y: auto;">
         
         @if (!confirmando()) {
           <div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border-color);">
@@ -69,7 +69,7 @@ import { InventarioService } from '../../services/inventario.service';
                   </label>
                 </div>
                 @if (form.get('tieneVencimiento')?.value) {
-                  <input type="date" formControlName="fechaVencimiento" class="form-control" [min]="fechaMinima">
+                  <input type="date" formControlName="fechaVencimiento" class="form-control" [min]="fechaMinima" onkeydown="return false">
                 }
               </div>
 

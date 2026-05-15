@@ -21,6 +21,12 @@ public class DiaBloqueado {
     @Column(nullable = false)
     private LocalDate fecha;
 
+    @Column(name = "fecha_fin")
+    private LocalDate fechaFin;
+
+    @Column(nullable = false)
+    private String tipo; // "DIA_BLOQUEADO" o "VACACIONES"
+
     @Column(nullable = false)
     private String motivo; // Ej: "Día del Trabajador", "Fumigación"
 

@@ -6,4 +6,5 @@ import com.veterinaria.modelos.CategoriaProducto;
 
 public interface CategoriaProductoRepositorio extends JpaRepository<CategoriaProducto, Long> {
     List<CategoriaProducto> findByActivoTrue();
+    boolean existsByNombreIgnoreCase(String nombre);
 }

@@ -2,6 +2,7 @@ import { Component, Inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { CustomValidators } from '../../shared/utils/custom-validators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
@@ -20,8 +21,8 @@ import { ColegiaturaService } from '../../core/services/colegiatura.service';
 import { HorariosVeterinarioComponent } from './horarios-veterinario.component';
 import { DiasBloqueadosComponent } from './dias-bloqueados.component';
 import { HorarioService, HorarioVeterinarioResponse } from '../../core/services/horario.service';
-import { DiaBloqueadoService, DiaBloqueadoResponse } from '../../core/services/dia-bloqueado.service';
-import { EmpleadoResponse, SedeResponse, RolResponse, ColegiaturaValidacion } from '../../core/models/models';
+import { DiaBloqueadoService } from '../../core/services/dia-bloqueado.service';
+import { EmpleadoResponse, SedeResponse, RolResponse, ColegiaturaValidacion, DiaBloqueadoResponse } from '../../core/models/models';
 
 export interface EmpleadoDialogData {
   empleado?: EmpleadoResponse;
@@ -383,10 +384,10 @@ export class EmpleadoDialogComponent implements OnInit {
     this.isEdit.set(!!data.empleado);
 
     this.form = this.fb.group({
-      dni: [{value: data.empleado?.dni || '', disabled: this.isEdit()}, [Validators.required, Validators.pattern('^[0-9]{8}$')]],
-      nombre: [{value: data.empleado?.nombre || '', disabled: this.isEdit()}, Validators.required],
-      apellido: [{value: data.empleado?.apellido || '', disabled: this.isEdit()}, Validators.required],
-      telefono: [data.empleado?.telefono || '', [Validators.required, Validators.pattern('^[0-9]{9}$')]],
+      dni: [{value: data.empleado?.dni || '', disabled: this.isEdit()}, [Validators.required, CustomValidators.dni]],
+      nombre: [{value: data.empleado?.nombre || '', disabled: this.isEdit()}, [Validators.required, CustomValidators.noWhitespace]],
+      apellido: [{value: data.empleado?.apellido || '', disabled: this.isEdit()}, [Validators.required, CustomValidators.noWhitespace]],
+      telefono: [data.empleado?.telefono || '', [Validators.required, CustomValidators.telefono]],
       email: [{value: data.empleado?.email || '', disabled: this.isEdit()}, [Validators.required, Validators.email]],
       especialidad: [data.empleado?.especialidad || ''],
       numeroColegiatura: [data.empleado?.numeroColegiatura || ''],

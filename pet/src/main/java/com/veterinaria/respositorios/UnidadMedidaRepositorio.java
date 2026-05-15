@@ -6,4 +6,5 @@ import com.veterinaria.modelos.UnidadMedida;
 
 public interface UnidadMedidaRepositorio extends JpaRepository<UnidadMedida, Long> {
     List<UnidadMedida> findByActivoTrue();
+    boolean existsByNombreIgnoreCase(String nombre);
 }

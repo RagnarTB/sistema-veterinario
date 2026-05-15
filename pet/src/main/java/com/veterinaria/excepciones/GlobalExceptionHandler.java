@@ -59,6 +59,36 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatusCode()).body(errorResponse);
     }
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarResourceNotFound(ResourceNotFoundException ex) {
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "No Encontrado",
+                ex.getMessage(),
+                null);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    @ExceptionHandler(BusinessLogicException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarBusinessLogic(BusinessLogicException ex) {
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                "Error de Negocio",
+                ex.getMessage(),
+                null);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(TokenInvalidException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarTokenInvalid(TokenInvalidException ex) {
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpStatus.UNAUTHORIZED.value(),
+                "Token Inválido",
+                ex.getMessage(),
+                null);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
     // 4. Atrapa errores de autorización (el usuario no tiene permiso) → 403 FORBIDDEN
     // IMPORTANTE: debe ir ANTES del handler genérico de Exception para que no lo tape
     @ExceptionHandler(AccessDeniedException.class)
@@ -85,10 +115,24 @@ public class GlobalExceptionHandler {
     // 6. Autenticación fallida -> 401
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponseDTO> manejarAuthenticationException(AuthenticationException ex) {
+        String mensaje = "Debes iniciar sesión para acceder a este recurso.";
+        String titulo = "No Autenticado";
+
+        if (ex instanceof org.springframework.security.authentication.DisabledException) {
+            mensaje = "Su cuenta ha sido desactivada. Por favor, contacte con el administrador.";
+            titulo = "Cuenta Desactivada";
+        } else if (ex instanceof org.springframework.security.authentication.BadCredentialsException) {
+            mensaje = "Usuario o contraseña incorrectos.";
+            titulo = "Credenciales Inválidas";
+        } else if (ex instanceof org.springframework.security.authentication.LockedException) {
+            mensaje = "Su cuenta ha sido bloqueada.";
+            titulo = "Cuenta Bloqueada";
+        }
+        
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
                 HttpStatus.UNAUTHORIZED.value(),
-                "No Autenticado",
-                "Debes iniciar sesión para acceder a este recurso.",
+                titulo,
+                mensaje,
                 null);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }

@@ -53,11 +53,14 @@ public class AtencionMedicaServicioTest {
 
     @BeforeEach
     void setUp() {
+        com.veterinaria.modelos.Usuario doctorUsuario = new com.veterinaria.modelos.Usuario();
+        doctorUsuario.setNombre("Dr. House");
         doctor = new Empleado();
         doctor.setId(10L);
-        doctor.setNombre("Dr. House");
+        doctor.setUsuario(doctorUsuario);
 
-        paciente = new Paciente();
+        com.veterinaria.modelos.Usuario pacienteUsuario = new com.veterinaria.modelos.Usuario();
+        pacienteUsuario.setNombre("Juan");
         paciente.setId(100L);
         paciente.setNombre("Boby");
 
