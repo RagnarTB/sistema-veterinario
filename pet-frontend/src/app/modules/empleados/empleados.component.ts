@@ -206,8 +206,8 @@ export class EmpleadosComponent implements OnInit {
   }
 
   cargarSedes() {
-    this.sedeService.listar().subscribe({
-      next: (sedes) => this.sedes.set(sedes),
+    this.sedeService.listar(0, 100).subscribe({
+      next: (res: any) => this.sedes.set(res.content || []),
       error: () => console.error('Error al cargar sedes')
     });
   }

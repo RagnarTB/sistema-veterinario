@@ -252,11 +252,11 @@ export interface DiaBloqueadoRequest {
 
 export interface DiaBloqueadoResponse {
   id: number;
-  veterinarioNombre: string;
   fecha: string;
   fechaFin?: string;
   tipo: string;
   motivo?: string;
+  veterinarioId?: number;
 }
 
 // =============================================
